@@ -46,6 +46,12 @@ class Dna:
         return positions
 
     def h_starting_positions(self, fragment):
-        
+        """
+        >>> dna = Dna("GATATATGCATATACTT")
+        >>> dna.h_starting_positions('ATAT')
+        '1 3 9'
+        """
+        return ' '.join(map(lambda c: str(c), self.starting_positions(fragment)))
+
 
 
