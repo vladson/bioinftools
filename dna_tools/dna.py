@@ -53,5 +53,11 @@ class Dna:
         """
         return ' '.join(map(lambda c: str(c), self.starting_positions(fragment)))
 
-
+    @classmethod
+    def h_file_starting_positions(cls, path):
+        data = open(path, 'r')
+        fragment = data.readline().strip()
+        dna = cls(data.readline().strip())
+        data.close()
+        return dna.h_starting_positions(fragment)
 
