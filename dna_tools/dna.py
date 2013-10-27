@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+import __builtin__
+
 __author__ = 'vladson'
 
 class Dna:
@@ -6,6 +8,9 @@ class Dna:
     def __init__(self, str=''):
         self.genome = str.upper()
         self.conversion_table = {'A': 'T', 'C': 'G', 'T': 'A', 'G': 'C'}
+
+    def __repr__(self):
+        return self.genome
 
     def complementary(self):
         """
@@ -17,11 +22,6 @@ class Dna:
 
 
     def substr_finder(self, length = 3):
-        """
-        >>> dna = Dna("ACGTTGCATGTCGCATGATGCATGAGAGCT")
-        >>> dna.substr_finder(4)
-        'CATG GCAT'
-        """
         results = {}
         for i in range(0, len(self.genome) - length):
             substr = self.genome[i:i + length]
@@ -29,8 +29,26 @@ class Dna:
                 results[substr] += 1
             else:
                 results[substr] = 1
+        return results
+
+    def h_max_substr_finder(self, length = 3):
+        """
+        >>> dna = Dna("ACGTTGCATGTCGCATGATGCATGAGAGCT")
+        >>> dna.h_max_substr_finder(4)
+        'CATG GCAT'
+        """
+        results = self.substr_finder(length)
         maximum = max(results.values())
         return ' '.join(map(lambda (key,_): key, filter(lambda (_,v): v == maximum, results.iteritems())))
+
+    def n_substr_finder(self, length, treshold):
+        """
+        >>> dna = Dna("CGGACTCGACAGATGTGAAGAACGACAATGTGAAGACTCGACACGACAGAGTGAAGAGAAGAGGAAACATTGTAA")
+        >>> dna.n_substr_finder(5, 4)
+        ['CGACA', 'GAAGA']
+        """
+        results = self.substr_finder(length)
+        return map(lambda (key,_): key, filter(lambda (_,val): val >= treshold, results.iteritems()))
 
     def starting_positions(self, fragment):
         """
@@ -53,6 +71,22 @@ class Dna:
         """
         return ' '.join(map(lambda c: str(c), self.starting_positions(fragment)))
 
+    def batches(self, batch):
+        for i in xrange(0, len(self.genome)):
+            yield self.__class__(self.genome[i: i + batch])
+
+    def clump_finder(self, batch, length, treshold):
+        """
+        >>> dna = Dna("CGGACTCGACAGATGTGAAGAACGACAATGTGAAGACTCGACACGACAGAGTGAAGAGAAGAGGAAACATTGTAA")
+        >>> list(dna.clump_finder(50, 5, 4))
+        ['CGACA', 'GAAGA']
+        """
+        clump = set()
+        for batch in self.batches(batch):
+            for kmer in batch.n_substr_finder(length, treshold):
+                clump.add(kmer)
+        return clump
+
     @classmethod
     def h_file_starting_positions(cls, path):
         data = open(path, 'r')
@@ -61,3 +95,9 @@ class Dna:
         data.close()
         return dna.h_starting_positions(fragment)
 
+    @classmethod
+    def h_file_clump_finder(cls, path):
+        data = open(path, 'r')
+        dna = Dna(data.readline().strip())
+        length, batch, treshold = map(lambda x: int(x), data.readline().strip().split())
+        print dna.clump_finder(batch, length, treshold)
