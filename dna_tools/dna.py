@@ -87,6 +87,24 @@ class Dna:
                 clump.add(kmer)
         return clump
 
+    def skew(self):
+        """
+        >>> dna = Dna('CATGGGCATCGGCCATACGCC')
+        >>> print ' '.join(map(lambda x: str(x), dna.skew()))
+        0 -1 -1 -1 0 1 2 1 1 1 0 1 2 1 0 0 0 0 -1 0 -1 -2
+        """
+        skew = [0]
+        for i in self.genome:
+            if i == 'C':
+                inc = -1
+            elif i == 'G':
+                inc = 1
+            else:
+                inc = 0
+            skew.append(skew[-1] + inc)
+        return skew
+
+
     @classmethod
     def h_file_starting_positions(cls, path):
         data = open(path, 'r')
