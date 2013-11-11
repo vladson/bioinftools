@@ -1,9 +1,10 @@
 #! /usr/bin/env python
 import __builtin__
+
 __author__ = 'vladson'
 
-class Dna:
 
+class Dna:
     def __init__(self, str=''):
         self.genome = str.upper()
         self.conversion_table = {'A': 'T', 'C': 'G', 'T': 'A', 'G': 'C'}
@@ -20,7 +21,7 @@ class Dna:
         return ''.join(map(lambda c: self.conversion_table[c], self.genome))[::-1]
 
 
-    def substr_finder(self, length = 3):
+    def substr_finder(self, length=3):
         results = {}
         for substr in self.n_substr_generator(length):
             if results.has_key(substr):
@@ -36,7 +37,7 @@ class Dna:
         ['CGACA', 'GAAGA']
         """
         results = self.substr_finder(length)
-        return map(lambda (key,_): key, filter(lambda (_,val): val >= treshold, results.iteritems()))
+        return map(lambda (key, _): key, filter(lambda (_, val): val >= treshold, results.iteritems()))
 
     def n_mismatch_substr_finder(self, k, d):
         """
@@ -48,13 +49,15 @@ class Dna:
         """
         results = {}
         for substr in self.n_substr_generator(k):
+            new_comparator, count = self.get_num_mismatch_comparator(substr, d), 1
             for comparator in results.keys():
                 if comparator(substr):
                     results[comparator] += 1
-                    continue
-            results[self.get_num_mismatch_comparator(substr, d)] = 1
+                if new_comparator(comparator.pattern):
+                    count += 1
+            results[new_comparator] = count
         treshold = max(results.values())
-        return results
+        return map(lambda (key, _): key.pattern, filter(lambda (_, val): val == treshold, results.iteritems()))
 
     def starting_positions(self, fragment):
         """
@@ -65,8 +68,8 @@ class Dna:
         positions = []
         fragment_length = len(fragment)
         for i in range(0, len(self.genome) - fragment_length):
-           if self.genome[i:fragment_length + i] == fragment:
-               positions.append(i)
+            if self.genome[i:fragment_length + i] == fragment:
+                positions.append(i)
         return positions
 
     def apprx_starting_positions(self, pattern, max_mismatches):
@@ -79,8 +82,8 @@ class Dna:
         pattern_length = len(pattern)
         comparator = self.get_num_mismatch_comparator(pattern, max_mismatches)
         for i in xrange(len(self.genome) - pattern_length + 1):
-           if comparator(self.genome[i:pattern_length + i]):
-               positions.append(i)
+            if comparator(self.genome[i:pattern_length + i]):
+                positions.append(i)
         return positions
 
     def batches(self, batch):
@@ -136,15 +139,18 @@ class Dna:
                     if errors > max_mismathces:
                         return False
             return True
-        return comparator
+
+        func = comparator
+        func.pattern = pattern
+        return func
 
     def n_substr_generator(self, length):
-        for i in xrange(0, len(self.genome) - length):
+        for i in xrange(0, len(self.genome) - length + 1):
             yield self.genome[i:i + length]
 
     # Human output
 
-    def h_max_substr_finder(self, length = 3):
+    def h_max_substr_finder(self, length=3):
         """
         >>> dna = Dna("ACGTTGCATGTCGCATGATGCATGAGAGCT")
         >>> dna.h_max_substr_finder(4)
@@ -152,7 +158,7 @@ class Dna:
         """
         results = self.substr_finder(length)
         maximum = max(results.values())
-        return ' '.join(map(lambda (key,_): key, filter(lambda (_,v): v == maximum, results.iteritems())))
+        return ' '.join(map(lambda (key, _): key, filter(lambda (_, v): v == maximum, results.iteritems())))
 
     def h_starting_positions(self, fragment):
         """
@@ -184,6 +190,7 @@ class Dna:
         dna = Dna(data.readline().strip())
         data.close()
         print ' '.join(map(lambda x: str(x), dna.min_skew()))
+
     @classmethod
     def h_file_apprx_start_pos(cls, path):
         data = open(path, 'r')
