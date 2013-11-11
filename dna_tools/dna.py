@@ -1,6 +1,5 @@
 #! /usr/bin/env python
 import __builtin__
-
 __author__ = 'vladson'
 
 class Dna:
@@ -23,23 +22,12 @@ class Dna:
 
     def substr_finder(self, length = 3):
         results = {}
-        for i in range(0, len(self.genome) - length):
-            substr = self.genome[i:i + length]
+        for substr in self.n_substr_generator(length):
             if results.has_key(substr):
                 results[substr] += 1
             else:
                 results[substr] = 1
         return results
-
-    def h_max_substr_finder(self, length = 3):
-        """
-        >>> dna = Dna("ACGTTGCATGTCGCATGATGCATGAGAGCT")
-        >>> dna.h_max_substr_finder(4)
-        'CATG GCAT'
-        """
-        results = self.substr_finder(length)
-        maximum = max(results.values())
-        return ' '.join(map(lambda (key,_): key, filter(lambda (_,v): v == maximum, results.iteritems())))
 
     def n_substr_finder(self, length, treshold):
         """
@@ -49,6 +37,24 @@ class Dna:
         """
         results = self.substr_finder(length)
         return map(lambda (key,_): key, filter(lambda (_,val): val >= treshold, results.iteritems()))
+
+    def n_mismatch_substr_finder(self, k, d):
+        """
+        k is length of k-mer
+        d is number of possible mismatches
+        >>> dna = Dna('ACGTTGCATGTCGCATGATGCATGAGAGCT')
+        >>> dna.n_mismatch_substr_finder(4, 1)
+        ['GATG', 'ATGC', 'ATGT']
+        """
+        results = {}
+        for substr in self.n_substr_generator(k):
+            for comparator in results.keys():
+                if comparator(substr):
+                    results[comparator] += 1
+                    continue
+            results[self.get_num_mismatch_comparator(substr, d)] = 1
+        treshold = max(results.values())
+        return results
 
     def starting_positions(self, fragment):
         """
@@ -63,13 +69,19 @@ class Dna:
                positions.append(i)
         return positions
 
-    def h_starting_positions(self, fragment):
+    def apprx_starting_positions(self, pattern, max_mismatches):
         """
-        >>> dna = Dna("GATATATGCATATACTT")
-        >>> dna.h_starting_positions('ATAT')
-        '1 3 9'
+        >>> dna = Dna('CGCCCGAATCCAGAACGCATTCCCATATTTCGGGACCACTGGCCTCCACGGTACGGACGTCAATCAAAT')
+        >>> dna.apprx_starting_positions('ATTCTGGA', 3)
+        [6, 7, 26, 27]
         """
-        return ' '.join(map(lambda c: str(c), self.starting_positions(fragment)))
+        positions = []
+        pattern_length = len(pattern)
+        comparator = self.get_num_mismatch_comparator(pattern, max_mismatches)
+        for i in xrange(len(self.genome) - pattern_length + 1):
+           if comparator(self.genome[i:pattern_length + i]):
+               positions.append(i)
+        return positions
 
     def batches(self, batch):
         for i in xrange(0, len(self.genome)):
@@ -104,7 +116,53 @@ class Dna:
             skew.append(skew[-1] + inc)
         return skew
 
+    def min_skew(self):
+        """
+        >>> dna = Dna('TAAAGACTGCCGAGAGGCCAACACGAGTGCTAGAACGAGGGGCGTAAACGCGGGTCCGAT')
+        >>> print ' '.join(map(lambda x: str(x), dna.min_skew()))
+        11 24
+        """
+        skew = self.skew()
+        return [i for i, x in enumerate(skew) if x == min(skew)]
 
+    # Service functions
+
+    def get_num_mismatch_comparator(self, pattern, max_mismathces):
+        def comparator(test_string):
+            errors = 0
+            for i in xrange(len(pattern)):
+                if test_string[i] != pattern[i]:
+                    errors += 1
+                    if errors > max_mismathces:
+                        return False
+            return True
+        return comparator
+
+    def n_substr_generator(self, length):
+        for i in xrange(0, len(self.genome) - length):
+            yield self.genome[i:i + length]
+
+    # Human output
+
+    def h_max_substr_finder(self, length = 3):
+        """
+        >>> dna = Dna("ACGTTGCATGTCGCATGATGCATGAGAGCT")
+        >>> dna.h_max_substr_finder(4)
+        'CATG GCAT'
+        """
+        results = self.substr_finder(length)
+        maximum = max(results.values())
+        return ' '.join(map(lambda (key,_): key, filter(lambda (_,v): v == maximum, results.iteritems())))
+
+    def h_starting_positions(self, fragment):
+        """
+        >>> dna = Dna("GATATATGCATATACTT")
+        >>> dna.h_starting_positions('ATAT')
+        '1 3 9'
+        """
+        return ' '.join(map(lambda c: str(c), self.starting_positions(fragment)))
+
+    # File initiated calls
     @classmethod
     def h_file_starting_positions(cls, path):
         data = open(path, 'r')
@@ -119,3 +177,18 @@ class Dna:
         dna = Dna(data.readline().strip())
         length, batch, treshold = map(lambda x: int(x), data.readline().strip().split())
         print dna.clump_finder(batch, length, treshold)
+
+    @classmethod
+    def h_file_min_skew(cls, path):
+        data = open(path, 'r')
+        dna = Dna(data.readline().strip())
+        data.close()
+        print ' '.join(map(lambda x: str(x), dna.min_skew()))
+    @classmethod
+    def h_file_apprx_start_pos(cls, path):
+        data = open(path, 'r')
+        fragment = data.readline().strip()
+        dna = Dna(data.readline().strip())
+        max_ed = int(data.readline().strip())
+        data.close()
+        print ' '.join(map(lambda x: str(x), dna.apprx_starting_positions(fragment, max_ed)))
