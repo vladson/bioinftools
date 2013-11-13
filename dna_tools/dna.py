@@ -50,17 +50,36 @@ class Dna:
         >>> dna.n_mismatch_substr_finder(10, 2)
         ['GCACACAGAC', 'GCGCACACAC']
         """
+        # Generating raw possible kmers
         results = {}
         for substr in self.n_substr_generator(k):
-            new_comparator, count = self.get_num_mismatch_comparator(substr, d), 1
-            for comparator in results.keys():
-                if comparator(substr):
-                    results[comparator] += 1
-                if new_comparator(comparator.pattern):
+            comparator, count = self.get_num_mismatch_comparator(substr, d), 1
+            for kmer, d in results.iteritems():
+                if d['comparator'](substr):
+                    results[kmer]['count'] += 1
+                if comparator(kmer):
                     count += 1
-            results[new_comparator] = count
-        treshold = max(results.values())
-        return map(lambda (key, _): key.pattern, filter(lambda (_, val): val == treshold, results.iteritems()))
+            if not results.has_key(substr):
+                results[substr] = {'comparator': comparator, 'count': count}
+
+        # selecting candidats
+        counts = map(lambda (a, b): b['count'], results.iteritems())
+        treshold = min(sorted(counts)[len(counts) / 2:])
+        kmers = map(lambda (key, _): key, filter(lambda (_, val): val['count'] >= treshold, results.iteritems()))
+        kmers += results.keys()
+        kmers = set(kmers)
+        candidates = dict(zip((kmer for kmer in kmers),
+                              zip((self.get_num_mismatch_comparator(kmer, d) for kmer in kmers), (1 for i in kmers))))
+
+        #counting
+        for substr in self.n_substr_generator(k):
+             for kmer, d in candidates.iteritems():
+                if d['comparator'](substr):
+                    candidates[kmer]['count'] += 1
+
+        #select winners
+        treshold = max(map(lambda _, v: v['count'], candidates.iteritems()))
+        return map(lambda (key, _): key, filter(lambda (_, val): val['count'] == treshold, results.iteritems()))
 
     def starting_positions(self, fragment):
         """
@@ -150,6 +169,23 @@ class Dna:
     def n_substr_generator(self, length):
         for i in xrange(0, len(self.genome) - length + 1):
             yield self.genome[i:i + length]
+
+    def permutate_substr(self, substr, level=1):
+        """
+        >>> d = Dna('ACTG')
+        >>> list(d.permutate_substr(d.genome))
+        ['CCTG', 'TCTG', 'GCTG', 'AATG', 'ATTG', 'AGTG', 'ACAG', 'ACCG', 'ACGG', 'ACTA', 'ACTC', 'ACTT']
+        """
+        seen = set()
+        for i in xrange(len(substr)):
+            for c in self.conversion_table.keys():
+                if i == 0:
+                    new = c + substr[1:]
+                else:
+                    new = substr[:i] + c + substr[i + 1:]
+                if new != substr and new not in seen:
+                    seen.add(new)
+                    yield new
 
     # Human output
 
