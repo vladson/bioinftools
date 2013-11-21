@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 import __builtin__
-
+import itertools
 __author__ = 'vladson'
 
 
@@ -8,6 +8,7 @@ class Dna:
     def __init__(self, str=''):
         self.genome = str.upper()
         self.conversion_table = {'A': 'T', 'C': 'G', 'T': 'A', 'G': 'C'}
+        self.alfabet = 'A', 'C', 'T', 'G'
 
     def __repr__(self):
         return self.genome
@@ -46,31 +47,32 @@ class Dna:
         >>> dna = Dna('ACGTTGCATGTCGCATGATGCATGAGAGCT')
         >>> dna.n_mismatch_substr_finder(4, 1)
         ['GATG', 'ATGC', 'ATGT']
-        >>> dna = Dna('CACAGTAGGCGCCGGCACACACAGCCCCGGGCCCCGGGCCGCCCCGGGCCGGCGGCCGCCGGCGCCGGCACACCGGCACAGCCGTACCGGCACAGTAGTACCGGCCGGCCGGCACACCGGCACACCGGGTACACACCGGGGCGCACACACAGGCGGGCGCCGGGCCCCGGGCCGTACCGGGCCGCCGGCGGCCCACAGGCGCCGGCACAGTACCGGCACACACAGTAGCCCACACACAGGCGGGCGGTAGCCGGCGCACACACACACAGTAGGCGCACAGCCGCCCACACACACCGGCCGGCCGGCACAGGCGGGCGGGCGCACACACACCGGCACAGTAGTAGGCGGCCGGCGCACAGCC')
-        >>> dna.n_mismatch_substr_finder(10, 2)
-        ['GCACACAGAC', 'GCGCACACAC']
+        #>>> dna = Dna('CACAGTAGGCGCCGGCACACACAGCCCCGGGCCCCGGGCCGCCCCGGGCCGGCGGCCGCCGGCGCCGGCACACCGGCACAGCCGTACCGGCACAGTAGTACCGGCCGGCCGGCACACCGGCACACCGGGTACACACCGGGGCGCACACACAGGCGGGCGCCGGGCCCCGGGCCGTACCGGGCCGCCGGCGGCCCACAGGCGCCGGCACAGTACCGGCACACACAGTAGCCCACACACAGGCGGGCGGTAGCCGGCGCACACACACACAGTAGGCGCACAGCCGCCCACACACACCGGCCGGCCGGCACAGGCGGGCGGGCGCACACACACCGGCACAGTAGTAGGCGGCCGGCGCACAGCC')
+        #>>> dna.n_mismatch_substr_finder(10, 2)
+        #['GCACACAGAC', 'GCGCACACAC']
         """
         # Generating raw possible kmers
-        results = {}
-        for substr in self.n_substr_generator(k):
-            comparator, count = self.get_num_mismatch_comparator(substr, d), 1
-            for kmer, d in results.iteritems():
-                if d['comparator'](substr):
-                    results[kmer]['count'] += 1
-                if comparator(kmer):
-                    count += 1
-            if not results.has_key(substr):
-                results[substr] = {'comparator': comparator, 'count': count}
-
-        # selecting candidats
-        counts = map(lambda (a, b): b['count'], results.iteritems())
-        treshold = min(sorted(counts)[len(counts) / 2:])
-        kmers = map(lambda (key, _): key, filter(lambda (_, val): val['count'] >= treshold, results.iteritems()))
-        kmers += results.keys()
-        kmers = set(kmers)
-        candidates = dict(zip((kmer for kmer in kmers),
-                              zip((self.get_num_mismatch_comparator(kmer, d) for kmer in kmers), (1 for i in kmers))))
-
+        #results = {}
+        #for substr in self.n_substr_generator(k):
+        #    comparator, count = self.get_num_mismatch_comparator(substr, d), 1
+        #    for kmer, d in results.iteritems():
+        #        if d['comparator'](substr):
+        #            results[kmer]['count'] += 1
+        #        if comparator(kmer):
+        #            count += 1
+        #    if not results.has_key(substr):
+        #        results[substr] = {'comparator': comparator, 'count': count}
+        #
+        ## selecting candidats
+        #counts = map(lambda (a, b): b['count'], results.iteritems())
+        #treshold = min(sorted(counts)[len(counts) / 2:])
+        #kmers = map(lambda (key, _): key, filter(lambda (_, val): val['count'] >= treshold, results.iteritems()))
+        #kmers += results.keys()
+        #kmers = set(kmers)
+        kmers = map(lambda t: ''.join(t), map(lambda i: itertools.permutations(i, k), itertools.combinations_with_replacement(self.alfabet, k)))
+        candidates = dict(zip((kmer for kmer in kmers), map(lambda kmer: dict(
+            comparator=self.get_num_mismatch_comparator(kmer, d), count=0), kmers)))
+        print len(candidates)
         #counting
         for substr in self.n_substr_generator(k):
              for kmer, d in candidates.iteritems():
@@ -78,8 +80,9 @@ class Dna:
                     candidates[kmer]['count'] += 1
 
         #select winners
-        treshold = max(map(lambda _, v: v['count'], candidates.iteritems()))
-        return map(lambda (key, _): key, filter(lambda (_, val): val['count'] == treshold, results.iteritems()))
+        treshold = max(map(lambda (_, v): v['count'], candidates.iteritems()))
+        print treshold
+        return map(lambda (key, _): key, filter(lambda (_, val): val['count'] == treshold, candidates.iteritems()))
 
     def starting_positions(self, fragment):
         """
