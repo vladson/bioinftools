@@ -1,6 +1,8 @@
 #! /usr/bin/env python
 import __builtin__
 import itertools
+import rna
+
 __author__ = 'vladson'
 
 
@@ -13,14 +15,24 @@ class Dna:
     def __repr__(self):
         return self.genome
 
+    def __eq__(self, other):
+        return self.genome == other.genome
+
     def complementary(self):
         """
         >>> dna = Dna('AAAACCCGGT')
         >>> dna.complementary()
-        'ACCGGGTTTT'
+        ACCGGGTTTT
         """
-        return ''.join(map(lambda c: self.conversion_table[c], self.genome))[::-1]
+        return self.__class__(''.join(map(lambda c: self.conversion_table[c], self.genome))[::-1])
 
+    def to_rna(self):
+        """
+        >>> r = Dna('ATGGCA')
+        >>> r.to_rna()
+        AUGGCA
+        """
+        return rna.Rna(''.join(map(lambda c: 'U' if c == 'T' else c, self.genome)))
 
     def substr_finder(self, length=3):
         results = {}

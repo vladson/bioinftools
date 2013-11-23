@@ -1,10 +1,13 @@
+import dna
+import protein
 __author__ = 'vladson'
-from protein import Protein
 
-class Rna:
+class Rna(dna.Dna):
 
-    def __init__(self, rna = ""):
-        self.rna = rna
+    def __init__(self, genome=""):
+        self.genome = genome
+        self.conversion_table = {'A': 'U', 'C': 'G', 'U': 'A', 'G': 'C'}
+        self.alfabet = 'A', 'C', 'U', 'G'
         self.codon_table = {}
         table = open('RNA_codon_table_1.txt', 'r')
         for line in table:
@@ -12,16 +15,21 @@ class Rna:
             self.codon_table[data[0]] = data[1] if len(data) > 1 else False
 
 
-    def __repr__(self):
-        return self.rna
-
     def to_protein(self):
         """
         >>> rna = Rna('AUGGCCAUGGCGCCCAGAACUGAGAUCAAUAGUACCCGUAUUAACGGGUGA')
         >>> rna.to_protein()
         MAMAPRTEINSTRING
         """
-        return Protein(''.join(self.amynoacids()))
+        return protein.Protein(''.join(self.amynoacids()))
+
+    def to_dna(self):
+        """
+        >>> r = Rna('AUGGCA')
+        >>> r.to_dna()
+        ATGGCA
+        """
+        return dna.Dna(''.join(map(lambda c: 'T' if c == 'U' else c, self.genome)))
 
     def amynoacids(self):
         """
@@ -39,5 +47,5 @@ class Rna:
         >>> print list(r.triplets())
         ['AUG', 'GCC']
         """
-        for i in xrange(0, len(self.rna), 3):
-            yield self.rna[i:i+3]
+        for i in xrange(0, len(self.genome), 3):
+            yield self.genome[i:i+3]
