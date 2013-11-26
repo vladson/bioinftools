@@ -55,6 +55,13 @@ class Protein:
             mass += self.integer_masses[aa]
         return mass
 
+    def spectrum_leaderboard_seq(self, spectrum, leaders=5):
+        """
+        >>> Protein().spectrum_leaderboard_seq([0, 71, 113, 129, 147, 200, 218, 260, 313, 331, 347, 389, 460], 10).mass_repr()
+        113-147-71-129
+        """
+        pass
+
     def spectrum_seq(self, spectrum):
         """
         >>> print ' '.join(map(lambda p: p.mass_repr(), Protein().spectrum_seq([0, 113, 128, 186, 241, 299, 314, 427]))[::-1])
