@@ -25,9 +25,9 @@ class Protein:
             integer_masses_reverse[int(mass)] = aa
     table.close()
 
-    def __init__(self, seq=""):
+    def __init__(self, seq="",seq_score=0):
         self.seq = seq
-
+        self.seq_score = seq_score
 
     def __repr__(self):
         return self.seq
@@ -57,10 +57,25 @@ class Protein:
 
     def spectrum_leaderboard_seq(self, spectrum, leaders=5):
         """
-        >>> Protein().spectrum_leaderboard_seq([0, 71, 113, 129, 147, 200, 218, 260, 313, 331, 347, 389, 460], 10).mass_repr()
-        113-147-71-129
+        >>> print Protein().spectrum_leaderboard_seq([0, 71, 113, 129, 147, 200, 218, 260, 313, 331, 347, 389, 460], 10).mass_repr()
+        71-147-113-129
         """
-        pass
+        parentMasses = set(spectrum)
+        scorer = self.get_spectrum_scorer(spectrum)
+        leader = Protein()
+        leader.seq_score = 1
+        leaderboard = [Protein()]
+        while len(leaderboard):
+            new_leaderboard = []
+            for candidate in self.expanded(leaderboard):
+                if candidate.mass() <= max(parentMasses):
+                    if scorer(candidate) > leader.seq_score:
+                        leader = candidate
+                    new_leaderboard.append(candidate)
+            leaderboard = self.score_cutted(new_leaderboard, leaders)
+            #print "score: %i, size: %i, trimmed_size: %i" % (leader.seq_score, len(new_leaderboard), len(leaderboard))
+        return leader
+
 
     def spectrum_seq(self, spectrum):
         """
@@ -72,12 +87,13 @@ class Protein:
         while len(candidates):
             new_candidates = []
             for peptide in self.expanded(candidates):
-                if checker(peptide.theoretical_ms(False)):
+                if checker(peptide.theoretical_ms(True)):
                     if sorted(list(peptide.theoretical_ms())) == sorted(spectrum):
                         yield peptide
                     else:
                         new_candidates.append(peptide)
             candidates = new_candidates
+
 
     def expanded(self, candidates):
         """
@@ -103,6 +119,32 @@ class Protein:
                     return False
             return True
         return check_spectrum
+
+    def get_spectrum_scorer(self, pattern):
+        def scorer(candidate):
+            score_list = list(pattern)
+            #score = 0
+            #score_list = set(pattern)
+            for mass in set(candidate.theoretical_ms()):
+                if mass in score_list:
+                    score_list.remove(mass)
+                    #score += 1
+            score = len(pattern) - len(score_list)
+            candidate.seq_score = score
+            return score
+        return scorer
+
+    def score_cutted(self, new_leaderboard=[], leaders=5):
+        """
+        >>> l = map(lambda i: Protein('K'*i,i), xrange(5))
+        >>> Protein().score_cutted(l,3)
+        [KKKK, KKK, KK]
+        """
+        if len(new_leaderboard) <= leaders:
+            return new_leaderboard
+        new_leaderboard = sorted(new_leaderboard, key=lambda c: c.seq_score, reverse=True)
+        min_score = new_leaderboard[-1].seq_score if len(new_leaderboard) < leaders else new_leaderboard[leaders-1].seq_score
+        return filter(lambda p: p.seq_score >= (min_score), new_leaderboard)
 
     def theoretical_ms(self, cyclic=True):
         """
@@ -189,3 +231,19 @@ class Protein:
 
         for fragment in fragments:
             print fragment
+
+
+    @classmethod
+    def leaderboard_seq(cls, path, test=False):
+        file = open(path, 'r')
+        if test:
+            file.readline()
+        n = int(file.readline().strip())
+        l = map(lambda i: int(i), file.readline().strip().split(' '))
+        print "Spectrum len: %i, n: %i, max_mass: %i" % (len(l), n, max(l))
+        peptide = Protein().spectrum_leaderboard_seq(l, n)
+        print peptide, peptide.mass_repr()
+        if test:
+            file.readline()
+            test = Protein.from_mass_repr(file.readline())
+            print test, test.mass_repr()
