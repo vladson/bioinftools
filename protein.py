@@ -26,7 +26,7 @@ class Protein:
             integer_masses_reverse[int(mass)] = aa
     table.close()
 
-    def __init__(self, seq="",seq_score=0):
+    def __init__(self, seq="", seq_score=0):
         self.seq = seq
         self.seq_score = seq_score
 
@@ -61,12 +61,17 @@ class Protein:
         >>> print Protein().spectrum_leaderboard_seq([0, 71, 113, 129, 147, 200, 218, 260, 313, 331, 347, 389, 460], 10).mass_repr()
         71-147-113-129
         >>> print Protein().spectrum_leaderboard_seq([57, 57, 71, 99, 129, 137, 170, 186, 194, 208, 228, 265, 285, 299, 307, 323, 356, 364, 394, 422, 493], 60, 20).mass_repr()
+        57-137-71-99-129
+        >>> Protein().restore_alfabet()
         """
-        # FIXME: Changing class!!!
+        dbg = False
+        if dbg:
+            print "Spectrum len: %i, n: %i, max_mass: %i, convolution num: %i" % (
+                len(spectrum), leaders, max(spectrum), convolute)
         if convolute:
-            self.set_alfabet(self.convolution_alfabet(spectrum, convolute))
-            print Protein.integer_masses
-            print Protein.integer_masses_uniq
+            self.set_alfabet(self.convolution_alfabet(spectrum, convolute, 'existing_t'))
+            if dbg:
+                print Protein.integer_masses
         parentMasses = set(spectrum)
         scorer = self.get_spectrum_scorer(spectrum)
         leader = Protein()
@@ -80,9 +85,44 @@ class Protein:
                         leader = candidate
                     new_leaderboard.append(candidate)
             leaderboard = self.score_cutted(new_leaderboard, leaders)
-            print "score: %i, size: %i, trimmed_size: %i" % (leader.seq_score, len(new_leaderboard), len(leaderboard))
+            if dbg:
+                print "score: %i, size: %i, trimmed_size: %i" % (
+                    leader.seq_score, len(new_leaderboard), len(leaderboard))
         return leader
 
+
+    def get_spectrum_scorer(self, pattern):
+        """
+        >>> scorer = Protein().get_spectrum_scorer([0, 113, 114, 128, 129, 227, 242, 242, 257, 355, 356, 370, 371, 484])
+        >>> peptide = Protein('NQEL')
+        >>> print scorer(peptide)
+        14
+        """
+
+        def scorer(candidate):
+            score_list = list(pattern)
+            for mass in list(candidate.theoretical_ms()):
+                if mass in score_list:
+                    score_list.remove(mass)
+            score = len(pattern) - len(score_list)
+            candidate.seq_score = score
+            return score
+
+        return scorer
+
+
+    def score_cutted(self, new_leaderboard=[], leaders=5):
+        """
+        >>> l = map(lambda i: Protein('K'*i,i), xrange(5))
+        >>> Protein().score_cutted(l,3)
+        [KKKK, KKK, KK]
+        """
+        if len(new_leaderboard) <= leaders:
+            return new_leaderboard
+        new_leaderboard = sorted(new_leaderboard, key=lambda c: c.seq_score, reverse=True)
+        min_score = new_leaderboard[-1].seq_score if len(new_leaderboard) < leaders else new_leaderboard[
+            leaders - 1].seq_score
+        return filter(lambda p: p.seq_score >= (min_score), new_leaderboard)
 
     def spectrum_seq(self, spectrum):
         """
@@ -101,7 +141,6 @@ class Protein:
                         new_candidates.append(peptide)
             candidates = new_candidates
 
-
     def expanded(self, candidates):
         """
         >>> list(Protein().expanded([Protein()]))
@@ -118,17 +157,23 @@ class Protein:
         >>> list(Protein().convolute([0, 137, 186, 323]))
         [137, 186, 323, 49, 186, 137]
         """
-        for traverse in xrange(0,len(spectrum)):
+        for traverse in xrange(0, len(spectrum)):
             i = spectrum[traverse]
             for j in spectrum[traverse:]:
                 diff = abs(i - j)
                 if diff > 0:
                     yield diff
 
-    def convolution_alfabet(self, spectrum, num=20):
+    def convolution_alfabet(self, spectrum, num=20, type='concrete'):
         """
         >>> Protein().convolution_alfabet([57, 57, 71, 99, 129, 137, 170, 186, 194, 208, 228, 265, 285, 299, 307, 323, 356, 364, 394, 422, 493], 20)
+        [129, 137, 71, 99, 57, 194, 170, 186, 79, 91, 58, 95, 113, 115, 128, 136, 148, 151, 156, 157]
+        >>> Protein().convolution_alfabet([57, 57, 71, 99, 129, 137, 170, 186, 194, 208, 228, 265, 285, 299, 307, 323, 356, 364, 394, 422, 493], 20, 'tails')
         [129, 137, 71, 99, 57, 194, 170, 186, 79, 91, 58, 95, 113, 115, 128, 136, 148, 151, 156, 157, 162, 166, 171, 178, 65, 66, 72, 80, 87, 109, 123]
+        >>> Protein().convolution_alfabet([57, 57, 71, 99, 129, 137, 170, 186, 194, 208, 228, 265, 285, 299, 307, 323, 356, 364, 394, 422, 493], 20, 'existing_c')
+        [129, 137, 71, 99, 57, 186, 113, 115, 128, 156]
+        >>> Protein().convolution_alfabet([57, 57, 71, 99, 129, 137, 170, 186, 194, 208, 228, 265, 285, 299, 307, 323, 356, 364, 394, 422, 493], 20, 'existing_t')
+        [129, 137, 71, 99, 57, 186, 113, 115, 128, 156, 87]
         """
         masset = {}
         for mass in self.convolute(spectrum):
@@ -137,9 +182,17 @@ class Protein:
                     masset[mass] += 1
                 else:
                     masset[mass] = 1
-        sorted_masses = sorted(masset.iteritems(), key=lambda (k,v): v, reverse=True)
-        _, min_freq = sorted_masses[num-1]
-        return map(lambda (mass, freq): mass, filter(lambda (mass,freq): freq >= min_freq, sorted_masses))
+        sorted_masses = sorted(masset.iteritems(), key=lambda (k, v): v, reverse=True)
+        _, min_freq = sorted_masses[num - 1]
+        return {
+            'concrete': lambda: map(lambda (mass, freq): mass, sorted_masses[:num]),
+            'tails': lambda: map(lambda (mass, freq): mass, filter(lambda (_, freq): freq >= min_freq, sorted_masses)),
+            'existing_c': lambda: map(lambda (m, _): m, filter(lambda (m, _): m in self.integer_masses_reverse.keys(),
+                                                               sorted_masses[:num])),
+            'existing_t': lambda: map(lambda (m, _): m,
+                                      filter(lambda (m, f): m in self.integer_masses_reverse.keys() and f >= min_freq,
+                                             sorted_masses))
+        }.get(type, lambda: map(lambda (mass, freq): mass, filter(lambda (_, freq): freq >= min_freq, sorted_masses)))()
 
     def get_spectrum_consistence_checker(self, pattern_spectrum):
         """
@@ -148,35 +201,14 @@ class Protein:
         >>> c(p.theoretical_ms())
         True
         """
+
         def check_spectrum(spectrum):
             for mass in spectrum:
                 if mass not in set(pattern_spectrum):
                     return False
             return True
+
         return check_spectrum
-
-    def get_spectrum_scorer(self, pattern):
-        def scorer(candidate):
-            score_list = list(pattern)
-            for mass in set(candidate.theoretical_ms()):
-                if mass in score_list:
-                    score_list.remove(mass)
-            score = len(pattern) - len(score_list)
-            candidate.seq_score = score
-            return score
-        return scorer
-
-    def score_cutted(self, new_leaderboard=[], leaders=5):
-        """
-        >>> l = map(lambda i: Protein('K'*i,i), xrange(5))
-        >>> Protein().score_cutted(l,3)
-        [KKKK, KKK, KK]
-        """
-        if len(new_leaderboard) <= leaders:
-            return new_leaderboard
-        new_leaderboard = sorted(new_leaderboard, key=lambda c: c.seq_score, reverse=True)
-        min_score = new_leaderboard[-1].seq_score if len(new_leaderboard) < leaders else new_leaderboard[leaders-1].seq_score
-        return filter(lambda p: p.seq_score >= (min_score), new_leaderboard)
 
     def theoretical_ms(self, cyclic=True):
         """
@@ -222,24 +254,37 @@ class Protein:
 
     def set_alfabet(self, masset=[]):
         """
-        # Tests go well but ruines all
-        #>>> Protein().set_alfabet([10, 20, 40])
-        #>>> print Protein.integer_masses
-        #{'A': 10, 'C': 40, 'B': 20}
+        Tests go well but ruines all
+        >>> Protein().set_alfabet([10, 20, 40])
+        >>> print Protein.integer_masses
+        {'A': 10, 'C': 40, 'B': 20}
+        >>> Protein().restore_alfabet()
         """
-        self.old_integer_masses = self.integer_masses
         self.__class__.old_integer_masses = self.integer_masses
+        self.__class__.old_integer_masses_uniq = self.integer_masses_uniq
+        self.__class__.old_integer_masses_reverse = self.integer_masses_reverse
         alfabet = {}
         alfabet_reverse = {}
-        for i, mass in enumerate(masset):
-            alfabet[chr(65+i)] = mass
-            alfabet_reverse[mass] = chr(65+i)
+        for i, mass in enumerate(sorted(masset)):
+            char = chr((65 if i < 26 else 71) + i)
+            alfabet[char] = mass
+            alfabet_reverse[mass] = char
         self.integer_masses = alfabet
         self.__class__.integer_masses = alfabet
         self.integer_masses_reverse = alfabet_reverse
         self.__class__.integer_masses_reverse = alfabet_reverse
         self.integer_masses_uniq = alfabet
         self.__class__.integer_masses_uniq = alfabet
+
+    def restore_alfabet(self):
+        if self.old_integer_masses:
+            self.integer_masses = self.old_integer_masses
+            self.__class__.integer_masses = self.old_integer_masses
+            self.integer_masses_reverse = self.old_integer_masses_reverse
+            self.__class__.integer_masses_reverse = self.old_integer_masses_reverse
+            self.integer_masses_uniq = self.old_integer_masses_uniq
+            self.__class__.integer_masses_uniq = self.old_integer_masses_uniq
+
 
     def append(self, aa=''):
         """
@@ -302,3 +347,20 @@ class Protein:
             file.readline()
             test = Protein.from_mass_repr(file.readline())
             print test, test.mass_repr()
+
+    @classmethod
+    def leaderboard_seq_convol(cls, path, test=False):
+        file = open(path, 'r')
+        if test:
+            file.readline()
+        m = int(file.readline().strip())
+        n = int(file.readline().strip())
+        l = map(lambda i: int(i), file.readline().strip().split(' '))
+        print "Spectrum len: %i, n: %i, max_mass: %i, convolve to: %i" % (len(l), n, max(l), m)
+        peptide = Protein().spectrum_leaderboard_seq(l, n, m)
+        print peptide, peptide.mass_repr()
+        if test:
+            file.readline()
+            test = Protein.from_mass_repr(file.readline())
+            print test, test.mass_repr()
+        Protein().restore_alfabet()
