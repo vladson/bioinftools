@@ -1,18 +1,20 @@
 import dna
 import protein
+
 __author__ = 'vladson'
 
 class Rna(dna.Dna):
 
+    conversion_table = {'A': 'U', 'C': 'G', 'U': 'A', 'G': 'C'}
+    alfabet = 'A', 'C', 'U', 'G'
+    codon_table = {}
+    table = open('RNA_codon_table_1.txt', 'r')
+    for line in table:
+        data = line.strip().split(' ')
+        codon_table[data[0]] = data[1] if len(data) > 1 else False
+
     def __init__(self, genome=""):
         self.genome = genome
-        self.conversion_table = {'A': 'U', 'C': 'G', 'U': 'A', 'G': 'C'}
-        self.alfabet = 'A', 'C', 'U', 'G'
-        self.codon_table = {}
-        table = open('RNA_codon_table_1.txt', 'r')
-        for line in table:
-            data = line.strip().split(' ')
-            self.codon_table[data[0]] = data[1] if len(data) > 1 else False
 
 
     def to_protein(self):
