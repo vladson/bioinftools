@@ -1,5 +1,6 @@
 #! /usr/bin/env python
 import itertools
+import random
 
 __author__ = 'vladson'
 
@@ -7,6 +8,7 @@ __author__ = 'vladson'
 class Dna:
     conversion_table = {'A': 'T', 'C': 'G', 'T': 'A', 'G': 'C'}
     alfabet = 'A', 'C', 'T', 'G'
+    test = True
 
     def __init__(self, str=''):
         self.genome = str.upper()
@@ -32,7 +34,41 @@ class Dna:
         AUGGCA
         """
         import rna
+
         return rna.Rna(''.join(map(lambda c: 'U' if c == 'T' else c, self.genome)))
+
+    #
+    #   Problems(outer)
+    #
+    @classmethod
+    def motiff_generator(cls, dnas=[], k=3, d=1):
+        """
+        dnas = list of DNA strings
+        k = kmer length
+        d = max mismatch number
+        >>> print list(Dna.motiff_generator(["ATTTGGC", "TGCCTTA", "CGGTATC", "GAAAATT"]))
+        ['ATT', 'TTT', 'GTT', 'ATA']
+        """
+        motiff_checker = Dna.get_dnas_d_motiff_checker(dnas, d)
+        existing = set(kmer for genome in dnas for kmer in Dna(genome).n_substr_generator(k))
+
+        ## Strategy one
+        #possibles = set(possible for kmer in existing for possible in Dna().n_mismatch_generator(kmer, d))
+        #for possible in possibles:
+        #   if motiff_checker(possible):
+        #        yield possible
+
+        # Strategy two
+        seen = set()
+        for kmer in existing:
+            for possible in Dna().n_mismatch_generator(kmer, k):
+                if possible in seen:
+                    continue
+                seen.add(possible)
+                if motiff_checker(possible):
+                    yield possible
+        if Dna.test:
+            print "Existing: %i, seen: %i" % (len(existing), len(seen))
 
     def substr_finder(self, length=3):
         results = {}
@@ -54,24 +90,25 @@ class Dna:
 
     def n_mismatch_substr_finder(self, k, d, cmrtr_type='n_mismatch'):
         """
+        Frequent words with mismatches and complementary
         k is length of k-mer
         d is number of possible mismatches
         #>>> dna = Dna('CACAGTAGGCGCCGGCACACACAGCCCCGGGCCCCGGGCCGCCCCGGGCCGGCGGCCGCCGGCGCCGGCACACCGGCACAGCCGTACCGGCACAGTAGTACCGGCCGGCCGGCACACCGGCACACCGGGTACACACCGGGGCGCACACACAGGCGGGCGCCGGGCCCCGGGCCGTACCGGGCCGCCGGCGGCCCACAGGCGCCGGCACAGTACCGGCACACACAGTAGCCCACACACAGGCGGGCGGTAGCCGGCGCACACACACACAGTAGGCGCACAGCCGCCCACACACACCGGCCGGCCGGCACAGGCGGGCGGGCGCACACACACCGGCACAGTAGTAGGCGGCCGGCGCACAGCC')
         #>>> dna.n_mismatch_substr_finder(10, 2)
         #['GCACACAGAC', 'GCGCACACAC']
-        >>> Dna('CTTGCCGGCGCCGATTATACGATCGCGGCCGCTTGCCTTCTTTATAATGCATCGGCGCCGCGATCTTGCTATATACGTACGCTTCGCTTGCATCTTGCGCGCATTACGTACTTATCGATTACTTATCTTCGATGCCGGCCGGCATATGCCGCTTTAGCATCGATCGATCGTACTTTACGCGTATAGCCGCTTCGCTTGCCGTACGCGATGCTAGCATATGCTAGCGCTAATTACTTAT').n_mismatch_substr_finder(9, 3, 'n_mismatch_compl')
+        #>>> Dna('CTTGCCGGCGCCGATTATACGATCGCGGCCGCTTGCCTTCTTTATAATGCATCGGCGCCGCGATCTTGCTATATACGTACGCTTCGCTTGCATCTTGCGCGCATTACGTACTTATCGATTACTTATCTTCGATGCCGGCCGGCATATGCCGCTTTAGCATCGATCGATCGTACTTTACGCGTATAGCCGCTTCGCTTGCCGTACGCGATGCTAGCATATGCTAGCGCTAATTACTTAT').n_mismatch_substr_finder(9, 3, 'n_mismatch_compl')
         ['AGCGCCGCT', 'AGCGGCGCT']
-        >>> dna = Dna('ACGTTGCATGTCGCATGATGCATGAGAGCT').n_mismatch_substr_finder(4, 1, 'n_mismatch')
+        #>>> dna = Dna('ACGTTGCATGTCGCATGATGCATGAGAGCT').n_mismatch_substr_finder(4, 1, 'n_mismatch')
         ['GATG', 'ATGC', 'ATGT']
-        >>> Dna('ACGTTGCATGTCGCATGATGCATGAGAGCT').n_mismatch_substr_finder(4, 1, 'n_mismatch_compl')
+        #>>> Dna('ACGTTGCATGTCGCATGATGCATGAGAGCT').n_mismatch_substr_finder(4, 1, 'n_mismatch_compl')
         ['ATGT', 'ACAT']
         """
         # Generating raw possible kmers
         results = {}
 
         get_comparator = {
-          'n_mismatch': self.get_num_mismatch_comparator,
-          'n_mismatch_compl': self.get_num_mismatch_complementary_comparator
+            'n_mismatch': self.get_num_mismatch_comparator,
+            'n_mismatch_compl': self.get_num_mismatch_complementary_comparator
         }.get(cmrtr_type, self.get_num_mismatch_comparator)
 
         for substr in self.n_substr_generator(k):
@@ -86,7 +123,7 @@ class Dna:
 
         # selecting candidats
         counts = sorted(map(lambda (a, b): b['count'], results.iteritems()))
-        res_treshold = int((counts[2]+counts[-2])/2)
+        res_treshold = int((counts[2] + counts[-2]) / 2)
         #res_treshold = 0
         prekmers = map(lambda (key, _): key, filter(lambda (_, val): val['count'] >= res_treshold, results.iteritems()))
 
@@ -96,13 +133,14 @@ class Dna:
             comparator=get_comparator(kmer, d), count=0), kmers)))
         #counting
         for substr in self.n_substr_generator(k):
-             for kmer, d in candidates.iteritems():
+            for kmer, d in candidates.iteritems():
                 if d['comparator'](substr):
                     candidates[kmer]['count'] += 1
 
         #select winners
         treshold = max(map(lambda (_, v): v['count'], candidates.iteritems()))
-        print "Raw results: %i, min: %i, :max: %i, median: %i, candidates: %i, treshold_count: %i" % (len(counts), min(counts), max(counts), res_treshold, len(candidates), treshold)
+        print "Raw results: %i, min: %i, :max: %i, median: %i, candidates: %i, treshold_count: %i" % (
+            len(counts), min(counts), max(counts), res_treshold, len(candidates), treshold)
         return map(lambda (key, _): key, filter(lambda (_, val): val['count'] == treshold, candidates.iteritems()))
 
     def starting_positions(self, fragment):
@@ -174,7 +212,43 @@ class Dna:
         skew = self.skew()
         return [i for i, x in enumerate(skew) if x == min(skew)]
 
+    #
     # Service functions
+    #
+
+    @classmethod
+    def get_random_string(cls, length):
+        """
+        >>> len(Dna.get_random_string(5).genome)
+        5
+        """
+        return Dna(''.join(random.choice(cls.alfabet) for x in range(length)))
+
+    @classmethod
+    def get_dnas_d_motiff_checker(cls, dnas, d):
+        """
+        list checker if kmer is present in all genomes
+        >>> ck =Dna.get_dnas_d_motiff_checker(['TCTGAGCTTGCGTTATTTTTAGACC', 'GTTTGACGGGAACCCGACGCCTATA', 'TTTTAGATTTCCTCAGTCCACTATA', 'CTTACAATTTCGTTATTTATCTAAT', 'CAGTAGGAATAGCCACTTTGTTGTA', 'AAATCCATTAAGGAAAGACGACCGT'], 2)
+        >>> ck('GCCTT')
+        True
+        >>> c = Dna.get_dnas_d_motiff_checker(["ATTTGGC", "TGCCTTA", "CGGTATC", "GAAAATT"], 1)
+        >>> c('ATA')
+        True
+        >>> c('GGG')
+        False
+        """
+        def checker(kmer):
+            dnas_objs = dict(zip(dnas, [False]*len(dnas)))
+            for mutation in Dna().n_mismatch_generator(kmer, d, True):
+                for (genome, val) in dnas_objs.iteritems():
+                    if not val:
+                        if mutation in genome:
+                            dnas_objs[genome] = True
+                if reduce(lambda a,b: a and b, dnas_objs.values(), True):
+                    return True
+            return False
+        return checker
+
 
     def get_num_mismatch_comparator(self, pattern, max_mismathces):
         def comparator(test_string):
@@ -197,6 +271,7 @@ class Dna:
         [True, True, True, True, True]
         """
         comp_pattern = Dna(pattern).complementary().genome
+
         def comparator(test_string):
             errors = 0
             c_errors = 0
@@ -218,14 +293,18 @@ class Dna:
         for i in xrange(0, len(self.genome) - length + 1):
             yield self.genome[i:i + length]
 
-    def n_mismatch_generator(self, substring, num_mismatches=1):
+    def n_mismatch_generator(self, substring, num_mismatches=1, eager=False):
         """
         >>> d = Dna('ACTG')
         >>> list(d.n_mismatch_generator(d.genome, 2))
         ['CATG', 'CTTG', 'CGTG', 'TATG', 'TTTG', 'TGTG', 'GATG', 'GTTG', 'GGTG', 'CCAG', 'CCCG', 'CCGG', 'TCAG', 'TCCG', 'TCGG', 'GCAG', 'GCCG', 'GCGG', 'CCTA', 'CCTC', 'CCTT', 'TCTA', 'TCTC', 'TCTT', 'GCTA', 'GCTC', 'GCTT', 'AAAG', 'AACG', 'AAGG', 'ATAG', 'ATCG', 'ATGG', 'AGAG', 'AGCG', 'AGGG', 'AATA', 'AATC', 'AATT', 'ATTA', 'ATTC', 'ATTT', 'AGTA', 'AGTC', 'AGTT', 'ACAA', 'ACAC', 'ACAT', 'ACCA', 'ACCC', 'ACCT', 'ACGA', 'ACGC', 'ACGT']
         >>> list(d.n_mismatch_generator(d.genome, 1))
         ['CCTG', 'TCTG', 'GCTG', 'AATG', 'ATTG', 'AGTG', 'ACAG', 'ACCG', 'ACGG', 'ACTA', 'ACTC', 'ACTT']
+        >>> list(d.n_mismatch_generator(d.genome, 1, True))
+        ['ACTG', 'CCTG', 'TCTG', 'GCTG', 'AATG', 'ATTG', 'AGTG', 'ACAG', 'ACCG', 'ACGG', 'ACTA', 'ACTC', 'ACTT']
         """
+        if eager:
+            yield substring
         for locs in itertools.combinations(range(len(substring)), num_mismatches):
             current_substr = [[char] for char in substring]
             for loc in locs:
@@ -318,4 +397,29 @@ class Dna:
         print 'DNA: %s, k-length: %i, num_mismatch: %i' % (fragment.genome, k, d)
         print ' '.join(map(lambda x: str(x), fragment.n_mismatch_substr_finder(k, d, 'n_mismatch_compl')))
 
+    @classmethod
+    def h_file_motiff_generator(cls, path, test=False):
+        data = open(path, 'r')
+        if test:
+            data.readline()
+        k, d = map(lambda i: int(i), data.readline().strip().split())
+        dnas = []
+        if test:
+            for i in range(6):
+                dnas.append(data.readline().strip())
+            data.readline()
+            answer = set(data.readline().strip().split())
+        else:
+            for line in data.readlines():
+                dnas.append(line.strip())
+            data.close()
+        print "Dnas:"
+        print dnas
+        print 'Begin'
+        results = set(Dna.motiff_generator(dnas, k, d))
+        if test:
+            print "Done needed: %i, generated: %i" % (len(answer), len(results))
+            print answer - results
+        else:
+            print ' '.join(results)
 
