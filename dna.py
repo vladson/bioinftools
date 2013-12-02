@@ -93,15 +93,24 @@ class Dna:
 
     def most_probable_motiff(self, profile):
         """
+        >>> prof = Profile([{'A': 0.357, 'C': 0.357, 'T': 0.107, 'G': 0.179}, {'A': 0.393, 'C': 0.179, 'T': 0.286, 'G': 0.143}, {'A': 0.179, 'C': 0.179, 'T': 0.321, 'G': 0.321}, {'A': 0.214, 'C': 0.179, 'T': 0.286, 'G': 0.321}, {'A': 0.286, 'C': 0.25, 'T': 0.214, 'G': 0.25}, {'A': 0.286, 'C': 0.25, 'T': 0.286, 'G': 0.179}, {'A': 0.393, 'C': 0.143, 'T': 0.25, 'G': 0.214}])
+        >>> d = Dna('GGTATGCGCACTTCCGAAGAAGGATGCTCAATCATACAAGACACATTCCATCGAGGTAGTTTGACTGGCGAAGTCCCGACTCGCTCACAACTAGTATCCTGTGAAGTCCAGCGTTGAACGACGTGTTGGCTTTAAGCGCCCTGCTTTTCACCAGTTTCTCTCCTAAGTTCGTTCCAGGTCCAAACTGTGGCACTGCAAAT')
+        >>> d.most_probable_motiff(prof)
+        ('CATTCCA', 0.000316376632947375)
+        >>> prof.pr('CATTCCA')
+        0.000316376632947375
         >>> d = Dna('ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGAGGGCCT')
         >>> pr = Profile.from_lines_legend(['A C G T', "0.2 0.4 0.3 0.1", "0.2 0.3 0.3 0.2", "0.3 0.1 0.5 0.1", "0.2 0.5 0.2 0.1", "0.3 0.1 0.4 0.2"])
         >>> d.most_probable_motiff(pr)
+        ('CCGAG', 0.0048000000000000004)
+        >>> pr.pr(pr.consensus())
+        0.012
         """
         leader, probability = None, 0.0
         for kmer in self.n_substr_generator(profile.length()):
             if profile.pr(kmer) > probability:
                 leader, probability = kmer,  profile.pr(kmer)
-        return kmer, probability
+        return leader, probability
 
     def substr_finder(self, length=3):
         results = {}
@@ -577,6 +586,10 @@ class Profile:
         for line in iterable:
             profile.append(dict(zip(legend, map(lambda x: float(x), line.strip().split()))))
         return cls(profile, legend)
+
+    @classmethod
+    def from_motiffs(cls, self, motiffs):
+        pass
 
     def length(self):
         return len(self.matrix)
