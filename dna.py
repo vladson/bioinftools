@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 import itertools
 import random
+import operator
 
 __author__ = 'vladson'
 
@@ -12,6 +13,7 @@ class Dna:
 
     def __init__(self, str=''):
         self.genome = str.upper()
+        self.hamming_score = len(self.genome)*100
 
     def __repr__(self):
         return self.genome
@@ -47,7 +49,8 @@ class Dna:
         k = kmer length
         d = max mismatch number
         >>> print list(Dna.motiff_generator(["ATTTGGC", "TGCCTTA", "CGGTATC", "GAAAATT"]))
-        ['ATT', 'TTT', 'GTT', 'ATA']
+        Existing: 18, seen: 64
+        ['ATA', 'ATT', 'TTT', 'GTT']
         """
         motiff_checker = Dna.get_dnas_d_motiff_checker(dnas, d)
         existing = set(kmer for genome in dnas for kmer in Dna(genome).n_substr_generator(k))
@@ -69,6 +72,36 @@ class Dna:
                     yield possible
         if Dna.test:
             print "Existing: %i, seen: %i" % (len(existing), len(seen))
+
+    @staticmethod
+    def median_string(dnas=[], length=3):
+        """
+        #>>> dnas = ["TGATGATAACGTGACGGGACTCAGCGGCGATGAAGGATGAGT", "CAGCGACAGACAATTTCAATAATATCCGCGGTAAGCGGCGTA", "TGCAGAGGTTGGTAACGCCGGCGACTCGGAGAGCTTTTCGCT", "TTTGTCATGAACTCAGATACCATAGAGCACCGGCGAGACTCA", "ACTGGGACTTCACATTAGGTTGAACCGCGAGCCAGGTGGGTG", "TTGCGGACGGGATACTCAATAACTAAGGTAGTTCAGCTGCGA", "TGGGAGGACACACATTTTCTTACCTCTTCCCAGCGAGATGGC", "GAAAAAACCTATAAAGTCCACTCTTTGCGGCGGCGAGCCATA", "CCACGTCCGTTACTCCGTCGCCGTCAGCGATAATGGGATGAG", "CCAAAGCTGCGAAATAACCATACTCTGCTCAGGAGCCCGATG"]
+        #>>> Dna.median_string(dnas, 6)
+        CGCCGA
+        >>> l = ["AAATTGACGCAT", "GACGACCACGTT", "CGTCAGCGCCTG", "GCTGAGCACCGG", "AGTACGGGACAG"]
+        >>> Dna.median_string(l)
+        ACG
+        """
+        leader = Dna('A'*length)
+        for kmer in Dna.kmer_generator(length):
+            kmer = Dna(kmer)
+            if Dna.hd_list(kmer, dnas) < leader.hamming_score:
+                leader = kmer
+        return leader
+
+
+    def most_probable_motiff(self, profile):
+        """
+        >>> d = Dna('ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGAGGGCCT')
+        >>> pr = Profile.from_lines_legend(['A C G T', "0.2 0.4 0.3 0.1", "0.2 0.3 0.3 0.2", "0.3 0.1 0.5 0.1", "0.2 0.5 0.2 0.1", "0.3 0.1 0.4 0.2"])
+        >>> d.most_probable_motiff(pr)
+        """
+        leader, probability = None, 0.0
+        for kmer in self.n_substr_generator(profile.length()):
+            if profile.pr(kmer) > probability:
+                leader, probability = kmer,  profile.pr(kmer)
+        return kmer, probability
 
     def substr_finder(self, length=3):
         results = {}
@@ -174,6 +207,13 @@ class Dna:
         for i in xrange(0, len(self.genome)):
             yield self.__class__(self.genome[i: i + batch])
 
+    def at_position(self, offset=0, length=3):
+        """
+        >>> print Dna('CGCCCGAATCCAGAACGCATTCCCATATTTCGG').at_position(5, 8)
+        GAATCCAG
+        """
+        return self.genome[offset:offset+length]
+
     def clump_finder(self, batch, length, treshold):
         """
         >>> dna = Dna("CGGACTCGACAGATGTGAAGAACGACAATGTGAAGACTCGACACGACAGAGTGAAGAGAAGAGGAAACATTGTAA")
@@ -216,6 +256,7 @@ class Dna:
     # Service functions
     #
 
+
     @classmethod
     def get_random_string(cls, length):
         """
@@ -224,12 +265,75 @@ class Dna:
         """
         return Dna(''.join(random.choice(cls.alfabet) for x in range(length)))
 
+    #Hamming distance related
+    @staticmethod
+    def hamming(seq1, seq2):
+        """
+        Hamming distance
+        >>> Dna.hamming('ACCCTG', 'ACCTTG')
+        1
+        """
+        if isinstance(seq1, Dna):
+            seq1 = seq1.genome
+        if isinstance(seq2, Dna):
+            seq2 = seq2.genome
+        assert len(seq1) == len(seq2)
+        return sum(itertools.imap(operator.ne, seq1, seq2))
+
+    @staticmethod
+    def hd_long(pattern, genome, indx=False):
+        """
+        >>> Dna.hd_long('AAA', 'TTACCTTAAC')
+        1
+        """
+        if not isinstance(genome, Dna):
+            genome = Dna(genome)
+        hamming_offsets = []
+        for possible in genome.n_substr_generator(len(pattern)):
+            hamming_offsets.append(Dna.hamming(pattern, possible))
+        if indx:
+            return hamming_offsets.index(min(hamming_offsets))
+        else:
+            return min(hamming_offsets)
+
+    @staticmethod
+    def hd_list(pattern, dnas):
+        """
+        >>> l =["TTACCTTAAC", 'GATATCTGTC', 'ACGGCGTTCG', 'CCCTAAAGAG', 'CGTCAGAGGT']
+        >>> Dna.hd_list('AAA', l)
+        5
+        >>> p = Dna('AAA')
+        >>> print p.hamming_score
+        300
+        >>> Dna.hd_list(p, l)
+        5
+        >>> print p.hamming_score
+        5
+        """
+        if isinstance(pattern, Dna):
+            pattern.hamming_score = sum(map(Dna.hd_long, [pattern.genome]*len(dnas), dnas))
+            return pattern.hamming_score
+        else:
+            return sum(map(Dna.hd_long, [pattern]*len(dnas), dnas))
+
+    @staticmethod
+    def motiff(pattern, genome):
+        """
+        >>> Dna.motiff('GATTCTCA', 'GCAAAGACGCTGACCAA')
+        'GACGCTGA'
+        """
+        if not isinstance(genome, Dna):
+            genome = Dna(genome)
+        return genome.at_position(Dna.hd_long(pattern, genome, True), len(pattern))
+
+
+
     @classmethod
     def get_dnas_d_motiff_checker(cls, dnas, d):
         """
         list checker if kmer is present in all genomes
-        >>> ck =Dna.get_dnas_d_motiff_checker(['TCTGAGCTTGCGTTATTTTTAGACC', 'GTTTGACGGGAACCCGACGCCTATA', 'TTTTAGATTTCCTCAGTCCACTATA', 'CTTACAATTTCGTTATTTATCTAAT', 'CAGTAGGAATAGCCACTTTGTTGTA', 'AAATCCATTAAGGAAAGACGACCGT'], 2)
-        >>> ck('GCCTT')
+        #>>> ck =Dna.get_dnas_d_motiff_checker(['TCTGAGCTTGCGTTATTTTTAGACC', 'GTTTGACGGGAACCCGACGCCTATA', 'TTTTAGATTTCCTCAGTCCACTATA', 'CTTACAATTTCGTTATTTATCTAAT', 'CAGTAGGAATAGCCACTTTGTTGTA', 'AAATCCATTAAGGAAAGACGACCGT'], 2)
+        #>>> ck('GCCTT')
         True
         >>> c = Dna.get_dnas_d_motiff_checker(["ATTTGGC", "TGCCTTA", "CGGTATC", "GAAAATT"], 1)
         >>> c('ATA')
@@ -293,7 +397,8 @@ class Dna:
         for i in xrange(0, len(self.genome) - length + 1):
             yield self.genome[i:i + length]
 
-    def n_mismatch_generator(self, substring, num_mismatches=1, eager=False):
+    @staticmethod
+    def n_mismatch_generator(substring, num_mismatches=1, eager=False):
         """
         >>> d = Dna('ACTG')
         >>> list(d.n_mismatch_generator(d.genome, 2))
@@ -309,9 +414,18 @@ class Dna:
             current_substr = [[char] for char in substring]
             for loc in locs:
                 orig_char = substring[loc]
-                current_substr[loc] = [l for l in self.alfabet if l != orig_char]
+                current_substr[loc] = [l for l in Dna.alfabet if l != orig_char]
             for poss in itertools.product(*current_substr):
                 yield ''.join(poss)
+
+    @staticmethod
+    def kmer_generator(length=4):
+        """
+        >>> len(list(Dna.kmer_generator(3)))
+        64
+        """
+        for kmer in itertools.product(Dna.alfabet, repeat=length):
+            yield ''.join(kmer)
 
     def complementary_filter(self, sequence):
         """
@@ -422,4 +536,71 @@ class Dna:
             print answer - results
         else:
             print ' '.join(results)
+
+    @staticmethod
+    def h_file_median_string(path):
+        data = open(path, 'r')
+        k = int(data.readline().strip())
+        dnas = []
+        for line in data.readlines():
+            dnas.append(line.strip())
+        data.close()
+        median_string = Dna.median_string(dnas, k)
+        print median_string, median_string.hamming_score
+
+class Profile:
+
+    legend = ['A','C','T','G']
+
+    def __init__(self, profile=[], legend=['A','C','T','G']):
+        self.matrix = profile
+        self.legend = legend
+
+    def __repr__(self):
+        return self.matrix.__repr__()
+
+    def __len__(self):
+        return len(self.matrix)
+
+    @classmethod
+    def from_lines_legend(cls, iterable):
+        """
+        >>> lines = ['A C G T', "0.2 0.4 0.3 0.1", "0.2 0.3 0.3 0.2", "0.3 0.1 0.5 0.1", "0.2 0.5 0.2 0.1", "0.3 0.1 0.4 0.2"]
+        >>> Profile.from_lines_legend(lines)
+        [{'A': 0.2, 'C': 0.4, 'T': 0.1, 'G': 0.3}, {'A': 0.2, 'C': 0.3, 'T': 0.2, 'G': 0.3}, {'A': 0.3, 'C': 0.1, 'T': 0.1, 'G': 0.5}, {'A': 0.2, 'C': 0.5, 'T': 0.1, 'G': 0.2}, {'A': 0.3, 'C': 0.1, 'T': 0.2, 'G': 0.4}]
+        >>> len(Profile.from_lines_legend(lines))
+        5
+        """
+        iterable = iter(iterable)
+        legend = iterable.next().strip().split()
+        profile = []
+        for line in iterable:
+            profile.append(dict(zip(legend, map(lambda x: float(x), line.strip().split()))))
+        return cls(profile, legend)
+
+    def length(self):
+        return len(self.matrix)
+
+    def pr(self, kmer):
+        """
+        >>> lines = ['A C G T', "0.2 0.1 0 0.7", '0.2 0.6 0 0.2', '0 0 1 0', '0 0 1 0', '0 0 0.9 0.1', '0 0 0.9 0.1', '0.9 0 0.1 0', '0.1 0.4 0 0.5', '0.1 0.1 0 0.8', '0.1 0.2 0 0.7', '0.3 0.4 0 0.3', '0 0.6 0 0.4']
+        >>> pr = Profile.from_lines_legend(lines)
+        >>> len(pr)
+        12
+        >>> pr.pr('TCGGGGATTTCC')
+        0.020575296
+        >>> pr.pr('TCGCGGATTTCC')
+        0.0
+        """
+        assert len(kmer) == len(self)
+        return reduce(lambda s,p: s*p, map(lambda (i, na): self.matrix[i][na], enumerate(kmer)))
+
+    def consensus(self):
+        """
+        >>> lines = ['A C G T', "0.2 0.1 0 0.7", '0.2 0.6 0 0.2', '0 0 1 0', '0 0 1 0', '0 0 0.9 0.1', '0 0 0.9 0.1', '0.9 0 0.1 0', '0.1 0.4 0 0.5', '0.1 0.1 0 0.8', '0.1 0.2 0 0.7', '0.3 0.4 0 0.3', '0 0.6 0 0.4']
+        >>> pr = Profile.from_lines_legend(lines)
+        >>> pr.consensus()
+        'TCGGGGATTTCC'
+        """
+        return ''.join(map(lambda pd: max(pd.iteritems(), key=operator.itemgetter(1))[0], self.matrix))
 
