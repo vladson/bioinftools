@@ -90,27 +90,48 @@ class Dna:
                 leader = kmer
         return leader
 
+    @staticmethod
+    def greedy_motiff_search(motiffs, k, t):
+        """
+        >>> Dna.greedy_motiff_search(["GGCGTTCAGGCA", "AAGAATCAGTCA", "CAAGGAGTTCGC", "CACGTCAATCAC", "CAATAATATTCG"], 3, 5)
+        ["CAG", "CAG", "CAA", "CAA", "CAA"]
+        """
+        best = map(lambda kmer: kmer[0:k], motiffs)
+        best_score = Dna.motiff_scorer(best)
+        print best, best_score
+        for offset in xrange(1, t):
+            candidates = [motiffs[0][offset:offset+k]]
+            for datum in motiffs[1:]:
+                candidates.append(Dna(datum).most_probable_motiff(Profile.from_motiffs(candidates)))
+            candidates_score = Dna.motiff_scorer(candidates)
+            if candidates_score < best_score:
+                print 'new leader'
+                best, best_score = candidates, candidates_score
+        return best
+
 
     def most_probable_motiff(self, profile):
         """
         >>> prof = Profile([{'A': 0.357, 'C': 0.357, 'T': 0.107, 'G': 0.179}, {'A': 0.393, 'C': 0.179, 'T': 0.286, 'G': 0.143}, {'A': 0.179, 'C': 0.179, 'T': 0.321, 'G': 0.321}, {'A': 0.214, 'C': 0.179, 'T': 0.286, 'G': 0.321}, {'A': 0.286, 'C': 0.25, 'T': 0.214, 'G': 0.25}, {'A': 0.286, 'C': 0.25, 'T': 0.286, 'G': 0.179}, {'A': 0.393, 'C': 0.143, 'T': 0.25, 'G': 0.214}])
         >>> d = Dna('GGTATGCGCACTTCCGAAGAAGGATGCTCAATCATACAAGACACATTCCATCGAGGTAGTTTGACTGGCGAAGTCCCGACTCGCTCACAACTAGTATCCTGTGAAGTCCAGCGTTGAACGACGTGTTGGCTTTAAGCGCCCTGCTTTTCACCAGTTTCTCTCCTAAGTTCGTTCCAGGTCCAAACTGTGGCACTGCAAAT')
         >>> d.most_probable_motiff(prof)
-        ('CATTCCA', 0.000316376632947375)
+        'CATTCCA'
         >>> prof.pr('CATTCCA')
         0.000316376632947375
         >>> d = Dna('ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGAGGGCCT')
         >>> pr = Profile.from_lines_legend(['A C G T', "0.2 0.4 0.3 0.1", "0.2 0.3 0.3 0.2", "0.3 0.1 0.5 0.1", "0.2 0.5 0.2 0.1", "0.3 0.1 0.4 0.2"])
         >>> d.most_probable_motiff(pr)
-        ('CCGAG', 0.0048000000000000004)
+        'CCGAG'
         >>> pr.pr(pr.consensus())
         0.012
         """
-        leader, probability = None, 0.0
-        for kmer in self.n_substr_generator(profile.length()):
+        generator = self.n_substr_generator(profile.length())
+        leader = generator.next()
+        probability = profile.pr(leader)
+        for kmer in generator:
             if profile.pr(kmer) > probability:
                 leader, probability = kmer,  profile.pr(kmer)
-        return leader, probability
+        return leader
 
     def substr_finder(self, length=3):
         results = {}
@@ -274,7 +295,17 @@ class Dna:
         """
         return Dna(''.join(random.choice(cls.alfabet) for x in range(length)))
 
-    #Hamming distance related
+    # motiff scorer
+    @staticmethod
+    def motiff_scorer(motiffs, real=True):
+        """
+        >>> Dna.motiff_scorer(['TCTGAGCTTGCGTTATTTTTAGACC', 'GTTTGACGGGAACCCGACGCCTATA', 'TTTTAGATTTCCTCAGTCCACTATA', 'CTTACAATTTCGTTATTTATCTAAT', 'CAGTAGGAATAGCCACTTTGTTGTA', 'AAATCCATTAAGGAAAGACGACCGT'])
+        69
+        """
+        profile = Profile.from_motiffs(motiffs, real)
+        return Dna.hd_list(profile.consensus(), motiffs)
+
+    # Hamming distance related
     @staticmethod
     def hamming(seq1, seq2):
         """
@@ -588,8 +619,13 @@ class Profile:
         return cls(profile, legend)
 
     @classmethod
-    def from_motiffs(cls, self, motiffs):
-        pass
+    def from_motiffs(cls, motiffs, real=True):
+        """
+        >>> pr = Profile.from_motiffs(["TCGGGGGTTTTT", "CCGGTGACTTAC", "ACGGGGATTTTC", "TTGGGGACTTTT", "AAGGGGACTTCC", "TTGGGGACTTCC", "TCGGGGATTCAT", "TCGGGGATTCCT", "TAGGGGAACTAC", "TCGGGTATAACC"])
+        >>> pr.consensus()
+        'TCGGGGATTTCC'
+        """
+        return cls(cls.countmatrix_to_probability(cls.count_matrix(motiffs, real)))
 
     def length(self):
         return len(self.matrix)
@@ -617,3 +653,31 @@ class Profile:
         """
         return ''.join(map(lambda pd: max(pd.iteritems(), key=operator.itemgetter(1))[0], self.matrix))
 
+    @staticmethod
+    def count_matrix(motiffs, real=True):
+        """
+        >>> Profile.count_matrix( ["TCGGGGGTTTTT", "CCGGTGACTTAC", "ACGGGGATTTTC", "TTGGGGACTTTT", "AAGGGGACTTCC", "TTGGGGACTTCC", "TCGGGGATTCAT", "TCGGGGATTCCT", "TAGGGGAACTAC", "TCGGGTATAACC"])
+        [{'A': 2, 'C': 1, 'T': 7, 'G': 0}, {'A': 2, 'C': 6, 'T': 2, 'G': 0}, {'A': 0, 'C': 0, 'T': 0, 'G': 10}, {'A': 0, 'C': 0, 'T': 0, 'G': 10}, {'A': 0, 'C': 0, 'T': 1, 'G': 9}, {'A': 0, 'C': 0, 'T': 1, 'G': 9}, {'A': 9, 'C': 0, 'T': 0, 'G': 1}, {'A': 1, 'C': 4, 'T': 5, 'G': 0}, {'A': 1, 'C': 1, 'T': 8, 'G': 0}, {'A': 1, 'C': 2, 'T': 7, 'G': 0}, {'A': 3, 'C': 4, 'T': 3, 'G': 0}, {'A': 0, 'C': 6, 'T': 4, 'G': 0}]
+        """
+        matrix = []
+        scaffold = {'A': 0, 'C': 0, 'T': 0, 'G': 0} if real else {'A': 1, 'C': 1, 'T': 1, 'G': 1}
+        for motiff in motiffs:
+            for i, na in enumerate(motiff):
+                if len(matrix) == i:
+                    matrix.append(dict(scaffold))
+                matrix[i][na] += 1
+        return matrix
+
+    @staticmethod
+    def countmatrix_to_probability(matrix):
+        """
+         >>> counts = Profile.count_matrix( ["TCGGGGGTTTTT", "CCGGTGACTTAC", "ACGGGGATTTTC", "TTGGGGACTTTT", "AAGGGGACTTCC", "TTGGGGACTTCC", "TCGGGGATTCAT", "TCGGGGATTCCT", "TAGGGGAACTAC", "TCGGGTATAACC"])
+         >>> Profile.countmatrix_to_probability(counts)
+         [{'A': 0.2, 'C': 0.1, 'T': 0.7, 'G': 0.0}, {'A': 0.2, 'C': 0.6, 'T': 0.2, 'G': 0.0}, {'A': 0.0, 'C': 0.0, 'T': 0.0, 'G': 1.0}, {'A': 0.0, 'C': 0.0, 'T': 0.0, 'G': 1.0}, {'A': 0.0, 'C': 0.0, 'T': 0.1, 'G': 0.9}, {'A': 0.0, 'C': 0.0, 'T': 0.1, 'G': 0.9}, {'A': 0.9, 'C': 0.0, 'T': 0.0, 'G': 0.1}, {'A': 0.1, 'C': 0.4, 'T': 0.5, 'G': 0.0}, {'A': 0.1, 'C': 0.1, 'T': 0.8, 'G': 0.0}, {'A': 0.1, 'C': 0.2, 'T': 0.7, 'G': 0.0}, {'A': 0.3, 'C': 0.4, 'T': 0.3, 'G': 0.0}, {'A': 0.0, 'C': 0.6, 'T': 0.4, 'G': 0.0}]
+        """
+        probabilities = list(matrix)
+        counts = map(lambda x: sum(x.values()), matrix)
+        for i, count in enumerate(counts):
+            for na, nacount in probabilities[i].iteritems():
+                probabilities[i][na] = float(nacount) / count
+        return probabilities
