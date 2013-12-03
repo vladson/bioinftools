@@ -3,6 +3,34 @@ class Stepic:
 
     test = True
 
+    #
+    #   Assemble genome
+    #
+
+    @staticmethod
+    def composition(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        k = int(data.readline().strip())
+        genome = dna.Dna(data.readline().strip())
+        if test:
+            data.readline()
+            print "Answers"
+            for line in data.readlines():
+                print line
+        data.close()
+        print "Results"
+        results = open('./output/composition.txt', 'w')
+        for kmer in genome.kmer_composition(k):
+            print kmer
+            results.write(kmer+'\n')
+        results.close()
+
+    #   End of Assemble Genome
+    #   Motiff finding
+    #
+
     @staticmethod
     def profile_most_probable_kmer(path):
         data = open(path)

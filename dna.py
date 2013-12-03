@@ -14,7 +14,7 @@ class Dna:
 
     def __init__(self, str=''):
         self.genome = str.upper()
-        self.hamming_score = len(self.genome)*100
+        self.hamming_score = len(self.genome) * 100
 
     def __repr__(self):
         return self.genome
@@ -41,8 +41,9 @@ class Dna:
         return rna.Rna(''.join(map(lambda c: 'U' if c == 'T' else c, self.genome)))
 
     #
-    #   Problems(outer)
+    #   Motiff Problems
     #
+
     @classmethod
     def motiff_generator(cls, dnas=[], k=3, d=1):
         """
@@ -84,7 +85,7 @@ class Dna:
         >>> Dna.median_string(l)
         ACG
         """
-        leader = Dna('A'*length)
+        leader = Dna('A' * length)
         for kmer in Dna.all_kmer_generator(length):
             kmer = Dna(kmer)
             if Dna.hd_list(kmer, dnas) < leader.hamming_score:
@@ -101,8 +102,8 @@ class Dna:
         """
         best = map(lambda kmer: kmer[0:k], motiffs)
         best_score = Dna.motiff_scorer(best)
-        for offset in xrange(1, len(motiffs[0])-k):
-            candidates = [motiffs[0][offset:offset+k]]
+        for offset in xrange(1, len(motiffs[0]) - k):
+            candidates = [motiffs[0][offset:offset + k]]
             for datum in motiffs[1:]:
                 candidates.append(Dna(datum).most_probable_motiff(Profile.from_motiffs(candidates, not pseudocounts)))
             candidates_score = Dna.motiff_scorer(candidates)
@@ -125,7 +126,8 @@ class Dna:
                 best_motifs, inneritercount, best_score = Dna.randomized_motiff_search(dnas, k, t)
                 if best_score <= treshold:
                     if out:
-                        print "Reached %i on iteration %i with score %i (on iter %i)" % (treshold, itercount, best_score, inneritercount)
+                        print "Reached %i on iteration %i with score %i (on iter %i)" % (
+                            treshold, itercount, best_score, inneritercount)
                     return best_motifs
         except KeyboardInterrupt:
             print "Interrupted on iteration %i with score %i (on iter %i)" % (itercount, best_score, inneritercount)
@@ -188,7 +190,7 @@ class Dna:
             itercount = 0
             for i in xrange(n):
                 itercount += 1
-                i = random.randint(0, t-1)
+                i = random.randint(0, t - 1)
                 motifs.pop(i)
                 profile = Profile.from_motiffs(motifs, False)
                 motifs.insert(i, profile.draw_kmer(Dna(dnas[i]).kmer_generator(k)))
@@ -232,7 +234,7 @@ class Dna:
         probability = profile.pr(leader)
         for kmer in generator:
             if profile.pr(kmer) > probability:
-                leader, probability = kmer,  profile.pr(kmer)
+                leader, probability = kmer, profile.pr(kmer)
         return leader
 
     def substr_finder(self, length=3):
@@ -344,7 +346,7 @@ class Dna:
         >>> print Dna('CGCCCGAATCCAGAACGCATTCCCATATTTCGG').at_position(5, 8)
         GAATCCAG
         """
-        return self.genome[offset:offset+length]
+        return self.genome[offset:offset + length]
 
     def clump_finder(self, batch, length, treshold):
         """
@@ -453,10 +455,10 @@ class Dna:
         5
         """
         if isinstance(pattern, Dna):
-            pattern.hamming_score = sum(map(Dna.hd_long, [pattern.genome]*len(dnas), dnas))
+            pattern.hamming_score = sum(map(Dna.hd_long, [pattern.genome] * len(dnas), dnas))
             return pattern.hamming_score
         else:
-            return sum(map(Dna.hd_long, [pattern]*len(dnas), dnas))
+            return sum(map(Dna.hd_long, [pattern] * len(dnas), dnas))
 
     @staticmethod
     def motiff(pattern, genome):
@@ -467,7 +469,6 @@ class Dna:
         if not isinstance(genome, Dna):
             genome = Dna(genome)
         return genome.at_position(Dna.hd_long(pattern, genome, True), len(pattern))
-
 
 
     @classmethod
@@ -483,18 +484,19 @@ class Dna:
         >>> c('GGG')
         False
         """
+
         def checker(kmer):
-            dnas_objs = dict(zip(dnas, [False]*len(dnas)))
+            dnas_objs = dict(zip(dnas, [False] * len(dnas)))
             for mutation in Dna().n_mismatch_generator(kmer, d, True):
                 for (genome, val) in dnas_objs.iteritems():
                     if not val:
                         if mutation in genome:
                             dnas_objs[genome] = True
-                if reduce(lambda a,b: a and b, dnas_objs.values(), True):
+                if reduce(lambda a, b: a and b, dnas_objs.values(), True):
                     return True
             return False
-        return checker
 
+        return checker
 
     def get_num_mismatch_comparator(self, pattern, max_mismathces):
         def comparator(test_string):
@@ -534,8 +536,22 @@ class Dna:
         func.pattern = pattern
         return func
 
+    #
+    # Assemble related
+    #
+
+    def kmer_composition(self, k):
+        """
+        >>> Dna('CAATCCAAC').kmer_composition(5)
+        ['AATCC', 'ATCCA', 'CAATC', 'CCAAC', 'TCCAA']
+        """
+        return sorted([kmer for kmer in self.kmer_generator(k)])
+    # End of Assemble related
 
     def kmer_generator(self, k):
+        """
+        Important method: make all the kmer strings
+        """
         for i in xrange(0, len(self.genome) - k + 1):
             yield self.genome[i:i + k]
 
@@ -585,8 +601,10 @@ class Dna:
             heap.add(genome)
             yield genome
 
+    #
     # Human output
-
+    # TODO: remove or move to Stepic
+    #
     def h_max_substr_finder(self, length=3):
         """
         >>> dna = Dna("ACGTTGCATGTCGCATGATGCATGAGAGCT")
@@ -694,11 +712,11 @@ class Dna:
         median_string = Dna.median_string(dnas, k)
         print median_string, median_string.hamming_score
 
+
 class Profile:
+    legend = ['A', 'C', 'T', 'G']
 
-    legend = ['A','C','T','G']
-
-    def __init__(self, profile=[], legend=['A','C','T','G']):
+    def __init__(self, profile=[], legend=['A', 'C', 'T', 'G']):
         self.matrix = profile
         self.legend = legend
 
@@ -748,7 +766,7 @@ class Profile:
         0.0
         """
         assert len(kmer) == len(self)
-        return reduce(lambda s,p: s*p, map(lambda (i, na): self.matrix[i][na], enumerate(kmer)))
+        return reduce(lambda s, p: s * p, map(lambda (i, na): self.matrix[i][na], enumerate(kmer)))
 
     def draw_kmer(self, kmer_generator):
         """
@@ -762,7 +780,7 @@ class Profile:
         # normalise probabilities
         sum_probailities = sum(raw_probabilities)
         probabilities = map(lambda p: p / sum_probailities, raw_probabilities)
-        distr = stats.rv_discrete(values = (range(len(kmers)), probabilities))
+        distr = stats.rv_discrete(values=(range(len(kmers)), probabilities))
         draw_index = distr.rvs()
         return kmers[draw_index]
 
