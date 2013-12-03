@@ -2,6 +2,7 @@
 import itertools
 import random
 import operator
+from scipy import stats
 
 __author__ = 'vladson'
 
@@ -53,7 +54,7 @@ class Dna:
         ['ATA', 'ATT', 'TTT', 'GTT']
         """
         motiff_checker = Dna.get_dnas_d_motiff_checker(dnas, d)
-        existing = set(kmer for genome in dnas for kmer in Dna(genome).n_substr_generator(k))
+        existing = set(kmer for genome in dnas for kmer in Dna(genome).kmer_generator(k))
 
         ## Strategy one
         #possibles = set(possible for kmer in existing for possible in Dna().n_mismatch_generator(kmer, d))
@@ -84,7 +85,7 @@ class Dna:
         ACG
         """
         leader = Dna('A'*length)
-        for kmer in Dna.kmer_generator(length):
+        for kmer in Dna.all_kmer_generator(length):
             kmer = Dna(kmer)
             if Dna.hd_list(kmer, dnas) < leader.hamming_score:
                 leader = kmer
@@ -109,6 +110,107 @@ class Dna:
                 best, best_score = candidates, candidates_score
         return best
 
+    @staticmethod
+    def iterative_randomized_motiff_search(dnas, k, t, treshold=10, out=False):
+        """
+        This algorithm is Monte-Carlo so output is not guarantied
+        #>>> dnas = ["CGCCCCTCTCGGGGGTGTTCAGTAAACGGCCA", "GGGCGAGGTATGTGTAAGTGCCAAGGTGCCAG", "TAGTACCGAGACCGAAAGAAGTATACAGGCGT", "TAGATCAAGTTTCAGGTGCACGTCGGTGAACC", "AATCCACCAGCTCCACGTGCAATGTTGGCCTA"]
+        #>>> Dna.iterative_randomized_motiff_search(dnas, 8, 5, treshold=9)
+        ['TCTCGGGG', 'CCAAGGTG', 'TACAGGCG', 'TTCAGGTG', 'TCCACGTG']
+        """
+        try:
+            itercount = 0
+            while itercount < 1000:
+                itercount += 1
+                best_motifs, inneritercount, best_score = Dna.randomized_motiff_search(dnas, k, t)
+                if best_score <= treshold:
+                    if out:
+                        print "Reached %i on iteration %i with score %i (on iter %i)" % (treshold, itercount, best_score, inneritercount)
+                    return best_motifs
+        except KeyboardInterrupt:
+            print "Interrupted on iteration %i with score %i (on iter %i)" % (itercount, best_score, inneritercount)
+            for motiff in best_motifs:
+                print motiff
+            raise
+
+    @staticmethod
+    def randomized_motiff_search(dnas, k, t, out=False):
+        try:
+            best_motifs = motifs = [Dna(line).rand_kmer(k) for line in dnas]
+            best_score = Dna.motiff_scorer(best_motifs, False)
+            itercount = 0
+            while True:
+                itercount += 1
+                profile = Profile.from_motiffs(motifs, False)
+                motifs = Dna.profile_motiffs(dnas, profile)
+                score = Dna.motiff_scorer(motifs, False)
+                if score < best_score:
+                    best_motifs, best_score = motifs, score
+                else:
+                    if out:
+                        print "Finished on iteration %i with score %i" % (itercount, best_score)
+                    return best_motifs, itercount, best_score
+        except KeyboardInterrupt:
+            print "Interrupted on iteration %i with score %i" % (itercount, best_score)
+            raise
+
+    @staticmethod
+    def iterative_gibbs_sampler(dnas, k, t, n, treshold=10, out=False):
+        """
+        Monte-Carlo hard to test
+        #>>> dnas = ["CGCCCCTCTCGGGGGTGTTCAGTAAACGGCCA", "GGGCGAGGTATGTGTAAGTGCCAAGGTGCCAG", "TAGTACCGAGACCGAAAGAAGTATACAGGCGT", "TAGATCAAGTTTCAGGTGCACGTCGGTGAACC", "AATCCACCAGCTCCACGTGCAATGTTGGCCTA"]
+        #>>> Dna.iterative_gibbs_sampler(dnas, 8, 5, 100, treshold=9, out=False)
+        ['TGTTCAGT', 'GCCAAGGT', 'AGTACCGA', 'ATCAAGTT', 'ACCAGCTC']
+        """
+        try:
+            itercount = 0
+            best_motifs, best_score = [], 10000
+            while itercount < 1000:
+                itercount += 1
+                motifs, score = Dna.gibbs_sampler(dnas, k, t, n)
+                if score < best_score:
+                    best_motifs, best_score = motifs, score
+                if best_score <= treshold:
+                    if out:
+                        print "Reached %i on iteration %i with score %i " % (treshold, itercount, best_score)
+                    return best_motifs
+        except KeyboardInterrupt:
+            print "Interrupted on iteration %i with min score %i" % (itercount, best_score)
+            for motiff in best_motifs:
+                print motiff
+            raise
+
+    @staticmethod
+    def gibbs_sampler(dnas, k, t, n, out=False):
+        try:
+            best_motifs = motifs = [Dna(line).rand_kmer(k) for line in dnas]
+            best_score = Dna.motiff_scorer(best_motifs, False)
+            itercount = 0
+            for i in xrange(n):
+                itercount += 1
+                i = random.randint(0, t-1)
+                motifs.pop(i)
+                profile = Profile.from_motiffs(motifs, False)
+                motifs.insert(i, profile.draw_kmer(Dna(dnas[i]).kmer_generator(k)))
+                score = Dna.motiff_scorer(motifs, False)
+                if score < best_score:
+                    best_motifs, best_score = motifs, score
+            if out:
+                print "Finished with score %i" % best_score
+            return best_motifs, best_score
+        except KeyboardInterrupt:
+            print "Interrupted on iteration %i with score %i" % (itercount, best_score)
+            raise
+
+    @staticmethod
+    def profile_motiffs(dnas, profile):
+        """
+        >>> pr = Profile.from_lines_legend(['A C G T', "0.2 0.4 0.3 0.1", "0.2 0.3 0.3 0.2", "0.3 0.1 0.5 0.1", "0.2 0.5 0.2 0.1", "0.3 0.1 0.4 0.2"])
+        >>> dnas = ['ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGAGGGCCT', 'ACCTGTTTATTGCCTAAGTTCCGAACAAACCCAATATAGCCCGTGGGCCT']
+        >>> Dna.profile_motiffs(dnas, pr)
+        ['CCGAG', 'CCGAA']
+        """
+        return [Dna(line).most_probable_motiff(profile) for line in dnas]
 
     def most_probable_motiff(self, profile):
         """
@@ -125,7 +227,7 @@ class Dna:
         >>> pr.pr(pr.consensus())
         0.012
         """
-        generator = self.n_substr_generator(profile.length())
+        generator = self.kmer_generator(profile.length())
         leader = generator.next()
         probability = profile.pr(leader)
         for kmer in generator:
@@ -135,7 +237,7 @@ class Dna:
 
     def substr_finder(self, length=3):
         results = {}
-        for substr in self.n_substr_generator(length):
+        for substr in self.kmer_generator(length):
             if results.has_key(substr):
                 results[substr] += 1
             else:
@@ -174,7 +276,7 @@ class Dna:
             'n_mismatch_compl': self.get_num_mismatch_complementary_comparator
         }.get(cmrtr_type, self.get_num_mismatch_comparator)
 
-        for substr in self.n_substr_generator(k):
+        for substr in self.kmer_generator(k):
             comparator, count = get_comparator(substr, d), 1
             for kmer, data in results.iteritems():
                 if data['comparator'](substr):
@@ -195,7 +297,7 @@ class Dna:
         candidates = dict(zip((kmer for kmer in kmers), map(lambda kmer: dict(
             comparator=get_comparator(kmer, d), count=0), kmers)))
         #counting
-        for substr in self.n_substr_generator(k):
+        for substr in self.kmer_generator(k):
             for kmer, d in candidates.iteritems():
                 if d['comparator'](substr):
                     candidates[kmer]['count'] += 1
@@ -329,7 +431,7 @@ class Dna:
         if not isinstance(genome, Dna):
             genome = Dna(genome)
         hamming_offsets = []
-        for possible in genome.n_substr_generator(len(pattern)):
+        for possible in genome.kmer_generator(len(pattern)):
             hamming_offsets.append(Dna.hamming(pattern, possible))
         if indx:
             return hamming_offsets.index(min(hamming_offsets))
@@ -433,9 +535,22 @@ class Dna:
         return func
 
 
-    def n_substr_generator(self, length):
-        for i in xrange(0, len(self.genome) - length + 1):
-            yield self.genome[i:i + length]
+    def kmer_generator(self, k):
+        for i in xrange(0, len(self.genome) - k + 1):
+            yield self.genome[i:i + k]
+
+    def rand_kmer(self, k):
+        offset = random.randint(0, len(self.genome) - k)
+        return self.genome[offset:offset + k]
+
+    @staticmethod
+    def all_kmer_generator(length=4):
+        """
+        >>> len(list(Dna.all_kmer_generator(3)))
+        64
+        """
+        for kmer in itertools.product(Dna.alfabet, repeat=length):
+            yield ''.join(kmer)
 
     @staticmethod
     def n_mismatch_generator(substring, num_mismatches=1, eager=False):
@@ -457,15 +572,6 @@ class Dna:
                 current_substr[loc] = [l for l in Dna.alfabet if l != orig_char]
             for poss in itertools.product(*current_substr):
                 yield ''.join(poss)
-
-    @staticmethod
-    def kmer_generator(length=4):
-        """
-        >>> len(list(Dna.kmer_generator(3)))
-        64
-        """
-        for kmer in itertools.product(Dna.alfabet, repeat=length):
-            yield ''.join(kmer)
 
     def complementary_filter(self, sequence):
         """
@@ -643,6 +749,22 @@ class Profile:
         """
         assert len(kmer) == len(self)
         return reduce(lambda s,p: s*p, map(lambda (i, na): self.matrix[i][na], enumerate(kmer)))
+
+    def draw_kmer(self, kmer_generator):
+        """
+        Believe me - it works
+        #>>> pr = Profile.from_motiffs(["TCGCCTGTTTTT", "CCGGTGACTTAC", "ACGGGGATTCTC", "TTGGGGACTTTT", "AAGGGGACTTCC", "TTGGGGACTTCC", "TCGGGGATTCAT", "TCGGGGATTCCT", "TAGGGGAACTAC", "TCGGGTATAACC"], False)
+        #>>> pr.draw_kmer(Dna('TGACTTCGCTGGAAAACCGTA').kmer_generator(12))
+        'TCGCTGGAAAAC'
+        """
+        kmers = [kmer for kmer in iter(kmer_generator)]
+        raw_probabilities = [self.pr(kmer) for kmer in kmers]
+        # normalise probabilities
+        sum_probailities = sum(raw_probabilities)
+        probabilities = map(lambda p: p / sum_probailities, raw_probabilities)
+        distr = stats.rv_discrete(values = (range(len(kmers)), probabilities))
+        draw_index = distr.rvs()
+        return kmers[draw_index]
 
     def consensus(self):
         """

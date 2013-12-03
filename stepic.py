@@ -40,3 +40,62 @@ class Stepic:
                 if results[i] != answers[i]:
                     print answers[i]
 
+    @staticmethod
+    def randomised_motiff_search(path, treshold=10, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        k, t = map(lambda x: int(x), data.readline().strip().split())
+        motiffs = []
+        for i in range(t):
+            motiffs.append(data.readline().strip())
+        if test:
+            data.readline()
+            answers = []
+            for line in data.readlines():
+                answers.append(line.strip())
+            treshold = dna.Dna.motiff_scorer(answers)
+            print "Treshold set to answers score and is %i" % treshold
+        data.close()
+        print "For k %i and treshold %i with %i motiffs" % (k, treshold, len(motiffs))
+        results = dna.Dna.iterative_randomized_motiff_search(motiffs, k, t, treshold, True)
+        print '\n'.join(results)
+        if test:
+            print 'ANSWERS'
+            print '\n'.join(answers)
+            print 'DIFF'
+            for i in range(len(answers)):
+                res = sorted(results)[i]
+                ans = sorted(answers)[i]
+                if res != ans:
+                    print ans
+
+    @staticmethod
+    def gibbs_sampler(path, treshold=10, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        k, t, n = map(lambda x: int(x), data.readline().strip().split())
+        motiffs = []
+        for i in range(t):
+            motiffs.append(data.readline().strip())
+        if test:
+            data.readline()
+            answers = []
+            for line in data.readlines():
+                answers.append(line.strip())
+            treshold = dna.Dna.motiff_scorer(answers)
+            print "Treshold set to answers score and is %i" % treshold
+        data.close()
+        print "For k %i and treshold %i with %i motiffs and %i iterations per call" % (k, treshold, len(motiffs), n)
+        results = dna.Dna.iterative_gibbs_sampler(motiffs, k, t, n, treshold, True)
+        print '\n'.join(results)
+        if test:
+            print 'ANSWERS'
+            print '\n'.join(answers)
+            print 'DIFF'
+            for i in range(len(answers)):
+                res = sorted(results)[i]
+                ans = sorted(answers)[i]
+                if res != ans:
+                    print ans

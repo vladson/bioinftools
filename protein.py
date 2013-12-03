@@ -325,7 +325,7 @@ class Protein:
         file.close()
         dnas = list(pr.possible_dnas())
         fragments = set()
-        for fragment in dn.n_substr_generator(pr.nalength()):
+        for fragment in dn.kmer_generator(pr.nalength()):
             if dna.Dna(fragment) in dnas:
                 fragments.add(fragment)
 
