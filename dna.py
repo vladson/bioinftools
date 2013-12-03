@@ -91,21 +91,21 @@ class Dna:
         return leader
 
     @staticmethod
-    def greedy_motiff_search(motiffs, k, t):
+    def greedy_motiff_search(motiffs, k, t, pseudocounts=True):
         """
+        >>> Dna.greedy_motiff_search(["GGCGTTCAGGCA", "AAGAATCAGTCA", "CAAGGAGTTCGC", "CACGTCAATCAC", "CAATAATATTCG"], 3, 5, False)
+        ['CAG', 'CAG', 'CAA', 'CAA', 'CAA']
         >>> Dna.greedy_motiff_search(["GGCGTTCAGGCA", "AAGAATCAGTCA", "CAAGGAGTTCGC", "CACGTCAATCAC", "CAATAATATTCG"], 3, 5)
-        ["CAG", "CAG", "CAA", "CAA", "CAA"]
+        ['TTC', 'ATC', 'TTC', 'ATC', 'TTC']
         """
         best = map(lambda kmer: kmer[0:k], motiffs)
         best_score = Dna.motiff_scorer(best)
-        print best, best_score
-        for offset in xrange(1, t):
+        for offset in xrange(1, len(motiffs[0])-k):
             candidates = [motiffs[0][offset:offset+k]]
             for datum in motiffs[1:]:
-                candidates.append(Dna(datum).most_probable_motiff(Profile.from_motiffs(candidates)))
+                candidates.append(Dna(datum).most_probable_motiff(Profile.from_motiffs(candidates, not pseudocounts)))
             candidates_score = Dna.motiff_scorer(candidates)
             if candidates_score < best_score:
-                print 'new leader'
                 best, best_score = candidates, candidates_score
         return best
 
