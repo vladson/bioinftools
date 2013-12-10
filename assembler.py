@@ -1,24 +1,86 @@
-class OverlapGraph:
+import dna
 
-    def __init__(self, graph={}):
-        self.graph = graph
+class Graph:
+
+    def __init__(self):
+        self.graph = {}
 
     def __repr__(self):
         return '\n'.join(self.output())
 
     @classmethod
+    def from_dna(cls, seq, k):
+        if not isinstance(seq, dna.Dna):
+            seq = dna.Dna(seq)
+        return cls.from_kmers(seq.kmer_generator(k))
+
+    @classmethod
     def from_kmers(cls, kmeriterator):
-        """
-        >>> OverlapGraph.from_kmers(["ATGCG", "GCATG", "CATGC", "AGGCA", "GGCAT"])
-        GGCAT -> GCATG
-        AGGCA -> GGCAT
-        CATGC -> ATGCG
-        GCATG -> CATGC
-        """
         graph = cls()
         for kmer in iter(kmeriterator):
             graph.add_kmer(kmer)
         return graph
+
+    def add_kmer(self, kmer):
+        raise 'NotImplemented'
+
+    def output(self):
+        raise 'NotImplemented'
+
+
+class DeBruijn(Graph):
+    """
+    >>> DeBruijn.from_dna('AAGATTCTCTAC', 4)
+    AAG -> AGA
+    TCT -> CTC,CTA
+    GAT -> ATT
+    AGA -> GAT
+    ATT -> TTC
+    CTA -> TAC
+    CTC -> TCT
+    TTC -> TCT
+    >>> DeBruijn.from_kmers(["GAGG", "GGGG", "GGGA", "CAGG", "AGGG", "GGAG"])
+    GAG -> AGG
+    AGG -> GGG
+    GGG -> GGG,GGA
+    CAG -> AGG
+    GGA -> GAG
+    """
+
+    def add_kmer(self, kmer):
+        start, end = DeBruijn.split(kmer)
+        if start in self.graph:
+            self.graph[start].append(end)
+        else:
+            self.graph[start] = [end]
+
+    def output(self):
+        for node, neighbours in self.graph.iteritems():
+            yield "%s -> %s" % (node, ','.join(neighbours))
+
+    @staticmethod
+    def split(kmer):
+        return kmer[:-1], kmer[1:]
+
+    @staticmethod
+    def edge(start, end):
+        """
+        >>> DeBruijn.edge('AAG', 'AGA')
+        'AAGA'
+        """
+        assert len(start) == len(end)
+        return start + end[-1]
+
+
+class OverlapGraph(Graph):
+
+    """
+    >>> OverlapGraph.from_kmers(["ATGCG", "GCATG", "CATGC", "AGGCA", "GGCAT"])
+    GGCAT -> GCATG
+    AGGCA -> GGCAT
+    CATGC -> ATGCG
+    GCATG -> CATGC
+    """
 
     def add_kmer(self, kmer):
         if not self.graph.has_key(kmer):

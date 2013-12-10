@@ -9,6 +9,32 @@ class Stepic:
     #
 
     @staticmethod
+    def debrujin_string(path):
+        data = open(path)
+        k = int(data.readline().strip())
+        seq = data.readline().strip()
+        print "Assembling DeBrujin from %s with k %i" % (seq, k)
+        graph = assembler.DeBruijn.from_dna(seq, k)
+        results = open('./output/debrujin_string.txt', 'w')
+        results.write(graph.__repr__())
+        results.close()
+        print graph
+
+    @staticmethod
+    def debrujin_kmers(path):
+        data = open(path)
+        kmers = []
+        for line in data.readlines():
+            kmers.append(line.strip())
+        data.close()
+        print "Assembling from %i kmers" % len(kmers)
+        graph = assembler.DeBruijn.from_kmers(kmers)
+        results = open('./output/debrujin_kmers.txt', 'w')
+        results.write(graph.__repr__())
+        results.close()
+        print graph
+
+    @staticmethod
     def overlap(path):
         data = open(path)
         kmers = []
