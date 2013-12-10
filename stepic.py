@@ -1,3 +1,4 @@
+import assembler
 import dna, rna, protein
 class Stepic:
 
@@ -6,6 +7,20 @@ class Stepic:
     #
     #   Assemble genome
     #
+
+    @staticmethod
+    def overlap(path):
+        data = open(path)
+        kmers = []
+        for line in data.readlines():
+            kmers.append(line.strip())
+        data.close()
+        print "Assembling from %i kmers" % len(kmers)
+        graph = assembler.OverlapGraph.from_kmers(kmers)
+        results = open('./output/overlap.txt', 'w')
+        results.write(graph.__repr__())
+        results.close()
+        print graph
 
     @staticmethod
     def composition(path, test=False):
