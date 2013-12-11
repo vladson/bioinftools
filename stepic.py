@@ -1,5 +1,5 @@
-import assembler
-import dna, rna, protein
+import dna, rna, protein, assembler, eulerian
+
 class Stepic:
 
     test = True
@@ -7,6 +7,42 @@ class Stepic:
     #
     #   Assemble genome
     #
+
+    @staticmethod
+    def eulerian_cycle(path, test = False):
+        data = open(path)
+        if test:
+            data.readline()
+            lines = []
+            while True:
+                line = data.readline()
+                if line.strip() == 'Output':
+                    break
+                lines.append(line)
+            graph = eulerian.Graph.from_repr_lines(lines)
+            output = data.readline()
+        else:
+            graph = eulerian.Graph.from_repr_lines(data.readlines())
+        data.close()
+        if not graph.balanced():
+            raise 'Graph not balanced'
+        cycle = graph.eulerian_cycle()
+        print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
+        while len(graph.edges) > len(cycle.traverse):
+            cycle = graph.eulerian_cycle()
+            print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
+        if not test:
+            results = open('./output/eulerian_cycle.txt', 'w')
+            results.write(cycle.__repr__())
+            results.close()
+        else:
+            print "Graph edges %i, results len %i, answer len %i" % (len(graph.edges), len(cycle.traverse), len(output.split('->')))
+            cycle.reformat_start(graph.get_node('1140'))
+            print 'Results'
+            print cycle
+            print 'Output'
+            print output
+
 
     @staticmethod
     def debrujin_string(path):
