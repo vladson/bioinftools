@@ -546,6 +546,30 @@ class Dna:
         ['AATCC', 'ATCCA', 'CAATC', 'CCAAC', 'TCCAA']
         """
         return sorted([kmer for kmer in self.kmer_generator(k)])
+
+    @staticmethod
+    def nodes_overlap_assembler(iterable):
+        result = ""
+        first = True
+        for node in iter(iterable):
+            if first:
+                result += node.key
+                first = False
+            else:
+                result += node.key[-1]
+        return str(result)
+
+    @staticmethod
+    def nodes_cyrcular_assembler(iterable):
+        result = ""
+        first = True
+        for node in iter(iterable):
+            if first:
+                first = False
+                continue
+            else:
+                result += node.key[-1]
+        return str(result)
     # End of Assemble related
 
     def kmer_generator(self, k):
@@ -559,13 +583,13 @@ class Dna:
         offset = random.randint(0, len(self.genome) - k)
         return self.genome[offset:offset + k]
 
-    @staticmethod
-    def all_kmer_generator(length=4):
+    @classmethod
+    def all_kmer_generator(cls, length=4):
         """
         >>> len(list(Dna.all_kmer_generator(3)))
         64
         """
-        for kmer in itertools.product(Dna.alfabet, repeat=length):
+        for kmer in itertools.product(cls.alfabet, repeat=length):
             yield ''.join(kmer)
 
     @staticmethod

@@ -1,4 +1,4 @@
-import dna, rna, protein, assembler, eulerian
+import dna, rna, protein, assembler, eulerian, universal_string
 
 class Stepic:
 
@@ -9,7 +9,24 @@ class Stepic:
     #
 
     @staticmethod
-    def eulerian_cycle(path, test = False):
+    def universal_k_binary_string(k, write=False):
+        """
+        #>>> Stepic.universal_k_binary_string(3)
+        00011101
+        #>>> Stepic.universal_k_binary_string(4)
+        0000110010111101
+        """
+        graph = eulerian.Graph.from_kmers(universal_string.UniversalBinaryString.all_kmer_generator(k))
+        cycle = graph.eulerian_cycle()
+        string = cycle.assemble(universal_string.UniversalBinaryString.nodes_cyrcular_assembler)
+        if write:
+            results = open('./output/universal_k_binary_string.txt', 'w')
+            results.write(string)
+            results.close()
+        print string
+
+    @staticmethod
+    def eulerian_cycle(path, assembler_func=False, test = False):
         data = open(path)
         if test:
             data.readline()
@@ -25,7 +42,8 @@ class Stepic:
             graph = eulerian.Graph.from_repr_lines(data.readlines())
         data.close()
         if not graph.balanced():
-            raise 'Graph not balanced'
+            print 'Graph not balanced. Balancing'
+            graph.balance()
         cycle = graph.eulerian_cycle()
         print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
         while len(graph.edges) > len(cycle.traverse):
@@ -33,13 +51,18 @@ class Stepic:
             print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
         if not test:
             results = open('./output/eulerian_cycle.txt', 'w')
-            results.write(cycle.__repr__())
+            if assembler_func:
+                results.write(cycle.assemble(assembler_func))
+            else:
+                results.write(cycle.__repr__())
             results.close()
         else:
             print "Graph edges %i, results len %i, answer len %i" % (len(graph.edges), len(cycle.traverse), len(output.split('->')))
-            cycle.reformat_start(graph.get_node('1140'))
             print 'Results'
-            print cycle
+            if assembler_func:
+                print cycle.assemble(assembler_func)
+            else:
+                print cycle
             print 'Output'
             print output
 
