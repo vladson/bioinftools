@@ -28,7 +28,7 @@ class Graph:
         return graph
 
     @classmethod
-    def from_kmers(cls, iterable):
+    def from_kmers(cls, iterable, split_funct=assembler.DeBruijn.split):
         """
         #>>> Graph.from_kmers(['00', '01', '10', '11'])
         1 -> 1,0
@@ -36,7 +36,7 @@ class Graph:
         """
         graph = cls()
         for kmer in iter(iterable):
-            graph.add_edge(*assembler.DeBruijn.split(kmer))
+            graph.add_edge(*split_funct(kmer.strip()))
         return graph
 
 
@@ -53,6 +53,9 @@ class Graph:
         GGC->GCT->CTT->TTA->TAC->ACC->CCA
         >>> print c.assemble(dna.Dna.nodes_overlap_assembler)
         GGCTTACCA
+        >>> graph = Graph.from_kmers(["GAGA|TTGA", "TCGT|GATG", "CGTG|ATGT", "TGGT|TGAG", "GTGA|TGTT", "GTGG|GTGA", "TGAG|GTTG", "GGTC|GAGA", "GTCG|AGAT"], dna.Dna.kdmer_splitter)
+        >>> graph.eulerian_cycle().assemble(dna.Dna.get_kdmer_nodes_overlap_assembler(2))
+        'GTGGTCGTGAGATGTTGA'
         """
         if not self.balanced():
             self.balance()
@@ -112,7 +115,8 @@ class Graph:
         """
         unbalanced = filter(lambda node: not node.balanced(), self.nodes.values())
         if len(unbalanced) > 2:
-            raise StandardError("Heavily unbalanced")
+            print len(self.nodes), len(self.edges)
+            raise StandardError("Heavily unbalanced (number %i)" % len(unbalanced))
         elif len(unbalanced) == 0:
             print "Graph balanced"
         else:

@@ -9,6 +9,41 @@ class Stepic:
     #
 
     @staticmethod
+    def read_pairs_reconstructor(path, test=False, split_func=dna.Dna.kdmer_splitter):
+        data = open(path)
+        if test:
+            data.readline()
+        d = int(data.readline().strip())
+        if test:
+            lines = []
+            while True:
+                line = data.readline()
+                if line.strip() == 'Output:':
+                    break
+                lines.append(line)
+            output = data.readline()
+        else:
+            lines = data.readlines()
+        data.close()
+        graph = eulerian.Graph.from_kmers(lines, split_func)
+        cycle = graph.eulerian_cycle()
+        print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
+        while len(graph.edges) > len(cycle.traverse):
+            cycle = graph.eulerian_cycle()
+            print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
+        if not test:
+            results = open('./output/readpairs_reconstruction.txt', 'w')
+            results.write(cycle.assemble(dna.Dna.get_kdmer_nodes_overlap_assembler(d)))
+            results.close()
+            print "Results saved"
+        else:
+            print "Graph edges %i, results len %i, answer len %i" % (len(graph.edges), len(cycle.traverse), len(output.split('->')))
+            print 'Results'
+            print cycle.assemble(dna.Dna.get_kdmer_nodes_overlap_assembler(d))
+            print 'Output'
+            print output
+
+    @staticmethod
     def universal_k_binary_string(k, write=False):
         """
         #>>> Stepic.universal_k_binary_string(3)
@@ -41,9 +76,6 @@ class Stepic:
         else:
             graph = eulerian.Graph.from_repr_lines(data.readlines())
         data.close()
-        if not graph.balanced():
-            print 'Graph not balanced. Balancing'
-            graph.balance()
         cycle = graph.eulerian_cycle()
         print "Graph edges %i, results len %i" % (len(graph.edges), len(cycle.traverse))
         while len(graph.edges) > len(cycle.traverse):

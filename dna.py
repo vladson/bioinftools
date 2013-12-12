@@ -547,6 +547,48 @@ class Dna:
         """
         return sorted([kmer for kmer in self.kmer_generator(k)])
 
+    def kdmer_composition(self, k, d):
+        """
+        >>> Dna('TAATGCCATGGGATGTT').kdmer_composition(3,1)
+        ['CAT|ATG', 'CCA|AAT', 'GAT|ATG', 'GGA|CAT', 'GGG|CCA', 'GTT|GGA', 'TAA|GCC', 'TGC|ATG', 'TGG|ATG', 'TGG|GCC', 'TGT|GGG']
+        """
+        return sorted(map(lambda kdmer: '|'.join(kdmer), self.kdmer_generator(k, d)))
+
+    @staticmethod
+    def kdmer_splitter(kdmer):
+        """
+        >>> Dna.kdmer_splitter('GAGA|TTGA')
+        ['GAG|TTG', 'AGA|TGA']
+        """
+        return map(lambda kd: '|'.join(kd), zip(*map(lambda kmer: [kmer[:-1], kmer[1:]], kdmer.split('|'))))
+
+    @staticmethod
+    def get_kdmer_nodes_overlap_assembler(d, real_k=False):
+        """
+        #>>> Dna.get_kdmer_nodes_overlap_assembler(1)(["AG|AG", "GC|GC", "CA|CT", "AG|TG", "GC|GC", "CT|CT", "TG|TG", "GC|GC", "CT|CA"])
+        AGCAGCTGCTGCA
+        """
+        def spl(kdmer):
+            return kdmer.split('|')
+
+        def assembler(iterable):
+            first = True
+            for node in iter(iterable):
+                a, b = spl(node.key)
+                #a, b = spl(node)
+                if first:
+                    if real_k:
+                        k = len(a)
+                    else:
+                        k = len(a)+1
+                    a_string, b_string = a, b
+                    first = False
+                else:
+                    a_string += a[-1]
+                    b_string += b[-1]
+            return a_string + b_string[-(k+d):]
+        return assembler
+
     @staticmethod
     def nodes_overlap_assembler(iterable):
         result = ""
@@ -571,6 +613,14 @@ class Dna:
                 result += node.key[-1]
         return str(result)
     # End of Assemble related
+
+    def kdmer_generator(self, k, d):
+        """
+        >>> list(Dna('TAATGCCATGGGATGTT').kdmer_generator(3,1))
+        [['TAA', 'GCC'], ['CCA', 'AAT'], ['CAT', 'ATG'], ['TGC', 'ATG'], ['TGG', 'GCC'], ['GGG', 'CCA'], ['GGA', 'CAT'], ['GAT', 'ATG'], ['TGG', 'ATG'], ['TGT', 'GGG'], ['GTT', 'GGA']]
+        """
+        for kmer in self.kmer_generator(2*k+d):
+            yield sorted([kmer[:k], kmer[-k:]], reverse = True)
 
     def kmer_generator(self, k):
         """
