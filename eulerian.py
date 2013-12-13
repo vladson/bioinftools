@@ -69,6 +69,19 @@ class Graph:
             cycle.traverse.pop()
         return cycle
 
+    def contig_cycles(self):
+        """
+        # Unpredictible results
+        #>>> graph = Graph.from_kmers(["ATG", "ATG", "TGT", "TGG", "CAT", "GGA", "GAT", "AGA"])
+        #>>> map(lambda c: c.assemble(dna.Dna.nodes_overlap_assembler), graph.contig_cycles())
+        ['ATG', 'ATG', 'AGA', 'TGGA', 'GAT', 'TGGA', 'CAT']
+        """
+        for edge in self.edges:
+            if not edge.start.non_branching():
+                cycle = Cycle(self, edge.start).contig()
+                if len(cycle.traverse) > 1:
+                    yield cycle
+
     def add_edge(self, start, end):
         if isinstance(start, Node) and isinstance(end, Node):
             start_node, end_node = start, end
@@ -159,13 +172,13 @@ class Node:
         return str(self.key)
 
     def add_outbound(self, node):
-        if not self.outbounds.has_key(Node):
+        if not self.outbounds.has_key(node):
             self.outbounds[node] = node
         else:
             raise StandardError("Node %s already in outbounds" % str(node))
 
     def add_inbound(self, node):
-        if not self.inbounds.has_key(Node):
+        if not self.inbounds.has_key(node):
             self.inbounds[node] = node
         else:
             raise StandardError("Node %s already in inbounds" % str(node))
@@ -175,6 +188,9 @@ class Node:
 
     def balanced(self):
         return self.disbalance() == 0
+
+    def non_branching(self):
+        return len(self.outbounds) == 1 and self.balanced()
 
 class Edge:
 
@@ -220,6 +236,12 @@ class Cycle:
             print self.traverse
             print self.visited
             print self.outways
+
+    def contig(self):
+        self.move()
+        while self.current.non_branching():
+            self.move()
+        return self
 
     def move(self):
         new = self.get_way()
