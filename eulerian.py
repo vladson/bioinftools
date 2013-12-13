@@ -69,16 +69,19 @@ class Graph:
             cycle.traverse.pop()
         return cycle
 
-    def contig_cycles(self):
+    def contigs(self, assm_func=dna.Dna.nodes_overlap_assembler):
         """
         # Unpredictible results
-        #>>> graph = Graph.from_kmers(["ATG", "ATG", "TGT", "TGG", "CAT", "GGA", "GAT", "AGA"])
-        #>>> map(lambda c: c.assemble(dna.Dna.nodes_overlap_assembler), graph.contig_cycles())
-        ['ATG', 'ATG', 'AGA', 'TGGA', 'GAT', 'TGGA', 'CAT']
+        >>> sorted(list(Graph.from_kmers(["ATG", "ATG", "TGT", "TGG", "CAT", "GGA", "GAT", "AGA"]).contigs()))
+        ['AGA', 'ATG', 'ATG', 'CAT', 'GAT', 'TGGA', 'TGT']
         """
+        for cycle in self.contig_cycles():
+            yield cycle.assemble(assm_func)
+
+    def contig_cycles(self):
         for edge in self.edges:
             if not edge.start.non_branching():
-                cycle = Cycle(self, edge.start).contig()
+                cycle = Cycle.from_edge(self, edge).contig()
                 if len(cycle.traverse) > 1:
                     yield cycle
 
@@ -225,6 +228,12 @@ class Cycle:
         self.current = start
         self.outways = set()
 
+    @classmethod
+    def from_edge(cls, graph, edge):
+        cycle = cls(graph, edge.start)
+        cycle.move(edge.end)
+        return cycle
+
     def assemble(self, funct):
         return funct(self.traverse)
 
@@ -238,13 +247,15 @@ class Cycle:
             print self.outways
 
     def contig(self):
-        self.move()
         while self.current.non_branching():
             self.move()
         return self
 
-    def move(self):
-        new = self.get_way()
+    def move(self, dest=False):
+        if dest:
+            new = dest
+        else:
+            new = self.get_way()
         self.visited[str(self.current)].append(new)
         self.traverse.append(new)
         if not self.visited.has_key(str(new)):

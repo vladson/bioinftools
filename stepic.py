@@ -9,6 +9,38 @@ class Stepic:
     #
 
     @staticmethod
+    def contigs(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        if test:
+            lines = []
+            while True:
+                line = data.readline()
+                if line.strip() == 'Output:':
+                    break
+                lines.append(line)
+            output = data.readlines()
+        else:
+            lines = data.readlines()
+        data.close()
+        graph = eulerian.Graph.from_kmers(lines)
+        if not test:
+            results = open('./output/contigs.txt', 'w')
+            for contig in graph.contigs():
+                results.write(contig+'\n')
+            results.close()
+            print "Results saved"
+        else:
+            contigs = list(graph.contigs())
+            print "Graph edges %i, results len %i, answer len %i" % (len(graph.edges), len(contigs), len(output))
+            print 'Results'
+            print '\n'.join(contigs)
+            print 'Output'
+            print output
+
+
+    @staticmethod
     def read_pairs_reconstructor(path, test=False, split_func=dna.Dna.kdmer_splitter):
         data = open(path)
         if test:
