@@ -3,14 +3,12 @@ import numpy
 
 class Manhattan:
 
-    def __init__(self, down=[[]], right=[[]], n=0, m=0):
+    def __init__(self, down=[[]], right=[[]], *direction_costs):
         self.down = list(down)
         self.right = list(right)
-        if not n or not m:
-            n = len(down)
-            m = len(right[0])
-        self.n, self.m = n, m
-        self.vertices = [ [ 0 for _ in range(m+1)] for _ in range(n+1) ]
+        self.directions = direction_costs
+        self.n, self.m = len(down), len(right[0])
+        self.vertices = [ [ 0 for _ in range(self.m+1)] for _ in range(self.n+1) ]
 
     def __repr__(self):
         return numpy.matrix(self.vertices).__repr__()
@@ -23,16 +21,16 @@ class Manhattan:
         >>> m.down, m.right, m.n, m.m
         ([[1, 0, 2, 4, 3], [4, 6, 5, 2, 1], [4, 4, 5, 2, 1], [5, 6, 8, 5, 3]], [[3, 2, 4, 0], [3, 2, 4, 2], [0, 7, 3, 3], [3, 3, 0, 2], [1, 3, 2, 2]], 4, 4)
         """
-        down = []
-        right = []
-        directions = [down, right]
+        directions = [[]]
         current = 0
         for line in iterable:
             if line == "-":
                 current += 1
+                if len(directions) <= current:
+                    directions.append([])
                 continue
             directions[current].append(map(lambda i: int(i), line.split(' ')))
-        return cls(down, right)
+        return cls(*directions)
 
 
     def longest_path(self):
@@ -43,6 +41,8 @@ class Manhattan:
         >>> m = Manhattan.from_strings(["1 0 2 4 3", "4 6 5 2 1", "4 4 5 2 1", "5 6 8 5 3", "-", "3 2 4 0", "3 2 4 2", "0 7 3 3", "3 3 0 2", "1 3 2 2"])
         >>> m.longest_path()
         34
+        >>> Manhattan.from_strings(["1 0 2 4 3", "4 6 5 2 1", "4 4 5 2 1", "5 6 8 5 3", "-", "3 2 4 0", "3 2 4 2", "0 7 3 3", "3 3 0 2", "1 3 2 2", "-", "5 0 2 1", "8 4 3 0", "10 8 9 5", "5 6 4 7"]).longest_path()
+        35
         """
         for i in range(self.n):
             self.vertices[i+1][0] = self.vertices[i][0] + self.down[i][0]
@@ -50,10 +50,14 @@ class Manhattan:
             self.vertices[0][i+1] = self.vertices[0][i] + self.right[0][i]
         for i in range(self.n):
             for j in range(self.m):
-                self.vertices[i+1][j+1] = max([(self.vertices[i][j+1] + self.down[i][j+1]), self.vertices[i+1][j] + self.right[i+1][j]])
+                self.vertices[i+1][j+1] = max(self.inbounds(i, j))
         return self.vertices[self.n][self.m]
 
-
+    def inbounds(self, i, j):
+        yield self.vertices[i][j+1] + self.down[i][j+1]
+        yield self.vertices[i+1][j] + self.right[i+1][j]
+        for table in self.directions:
+            yield self.vertices[i][j] + table[i][j]
 
 class Coins:
 
