@@ -3,9 +3,57 @@ import numpy
 
 class Manhattan:
 
-    def __init__(self, down=numpy.matrix([]), right=numpy.matrix([]), n=0, m=0):
-        self.down = numpy.matrix(down)
-        self.right = numpy.matrix(right)
+    def __init__(self, down=[[]], right=[[]], n=0, m=0):
+        self.down = list(down)
+        self.right = list(right)
+        if not n or not m:
+            n = len(down)
+            m = len(right[0])
+        self.n, self.m = n, m
+        self.vertices = [ [ 0 for _ in range(m+1)] for _ in range(n+1) ]
+
+    def __repr__(self):
+        return numpy.matrix(self.vertices).__repr__()
+
+    @classmethod
+    def from_strings(cls, iterable):
+        """
+        From lines of down and right separated with '-'
+        >>> m = Manhattan.from_strings(["1 0 2 4 3", "4 6 5 2 1", "4 4 5 2 1", "5 6 8 5 3", "-", "3 2 4 0", "3 2 4 2", "0 7 3 3", "3 3 0 2", "1 3 2 2"])
+        >>> m.down, m.right, m.n, m.m
+        ([[1, 0, 2, 4, 3], [4, 6, 5, 2, 1], [4, 4, 5, 2, 1], [5, 6, 8, 5, 3]], [[3, 2, 4, 0], [3, 2, 4, 2], [0, 7, 3, 3], [3, 3, 0, 2], [1, 3, 2, 2]], 4, 4)
+        """
+        down = []
+        right = []
+        directions = [down, right]
+        current = 0
+        for line in iterable:
+            if line == "-":
+                current += 1
+                continue
+            directions[current].append(map(lambda i: int(i), line.split(' ')))
+        return cls(down, right)
+
+
+    def longest_path(self):
+        """
+        #>>> strs = ["3 0 0 3 1 0 1 2 1 0 2 0", "3 3 4 1 0 1 2 1 3 0 2 1", "0 0 3 0 0 2 3 1 4 2 4 0", "0 3 4 0 2 4 0 2 4 4 2 1", "2 4 0 2 1 4 1 1 0 0 0 2", "-", "1 0 0 3 1 2 4 3 0 1 4", "1 2 3 2 4 1 4 2 3 4 0", "0 3 2 3 1 3 4 4 1 0 3", "0 4 1 1 4 3 0 0 2 4 4", "2 3 4 2 2 4 3 3 3 3 4", "1 1 4 0 4 4 3 4 1 3 3"]
+        #>>> Manhattan.from_strings(strs).longest_path()
+        47
+        >>> m = Manhattan.from_strings(["1 0 2 4 3", "4 6 5 2 1", "4 4 5 2 1", "5 6 8 5 3", "-", "3 2 4 0", "3 2 4 2", "0 7 3 3", "3 3 0 2", "1 3 2 2"])
+        >>> m.longest_path()
+        34
+        """
+        for i in range(self.n):
+            self.vertices[i+1][0] = self.vertices[i][0] + self.down[i][0]
+        for i in range(self.m):
+            self.vertices[0][i+1] = self.vertices[0][i] + self.right[0][i]
+        for i in range(self.n):
+            for j in range(self.m):
+                self.vertices[i+1][j+1] = max([(self.vertices[i][j+1] + self.down[i][j+1]), self.vertices[i+1][j] + self.right[i+1][j]])
+        return self.vertices[self.n][self.m]
+
+
 
 class Coins:
 
