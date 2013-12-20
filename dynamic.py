@@ -1,6 +1,5 @@
 import numpy
 
-
 class Dag:
 
     def __init__(self):
@@ -55,17 +54,22 @@ class Dag:
 
 class DagVertex:
 
-    def __init__(self, weight, coords=[], ptr=0, real=False):
+    def __init__(self, weight, coords=[], ptr=0, real=False, name = ''):
         self.weight = weight
         self.inbounds = []
+        self.outbounds = []
         self.coords = coords
         self.ptr = ptr
         self.real = real
+        self.name = name
 
     def update(self, vrtx):
         self.weight = vrtx.weight
         self.ptr = vrtx.ptr
         self.real = vrtx.real
+
+    def indegree(self):
+        return len(self.inbounds)
 
     def __repr__(self):
         return self.weight.__repr__()
@@ -80,6 +84,30 @@ class DagVertex:
 
     def __cmp__(self, other):
         return cmp(self.weight, other.weight)
+
+class ArbitryDag(Dag):
+
+    def __init__(self):
+        self.vertices = {}
+        self.ordering = []
+
+    def add_edge(self, src, dst):
+        src = self.get_vrtx(src)
+        dst = self.get_vrtx(dst)
+        dst.inbounds.append(src)
+
+    def get_vrtx(self, name):
+        if self.vertices.has_key(name):
+            return self.vertices[name]
+        else:
+            vrtx = DagVertex(0, name=name)
+            self.vertices[name] = vrtx
+            return vrtx
+
+    def topological_ordering(self, src_node=''):
+        if src_node:
+            if self.get_vrtx(src_node).indegree():
+                raise StandardError('Source have incoming')
 
 
 class Manhattan(Dag):
