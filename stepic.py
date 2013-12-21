@@ -1,8 +1,48 @@
-import dna, rna, protein, assembler, eulerian, universal_string
+import dna, rna, protein, assembler, eulerian, universal_string, dynamic, alignment
 
 class Stepic:
 
     test = True
+
+    #
+    #   Sequence alignment
+    #
+
+    @staticmethod
+    def global_align(path):
+        data = open(path)
+        src = data.readline().strip()
+        dst = data.readline().strip()
+        graph = alignment.BlosumAlign(src, dst)
+        print 'Beginning calculations'
+        path_node = graph.longest_path()
+        print 'Score'
+        print path_node
+        print 'Backtrack'
+        print graph.backtrack(path_node)
+        output = open('./output/global_align.txt', 'w')
+        output.write(str(path_node.weight) + "\n")
+        output.write(src + "\n")
+        output.write(graph.backtrack(path_node))
+        print 'results written to ./output/global_align.txt'
+        return graph, path_node
+
+    @staticmethod
+    def dag_longest(path):
+        data = open(path)
+        src = data.readline().strip()
+        dst = data.readline().strip()
+        graph = dynamic.ArbitryDag.from_lines(data.readlines())
+        print graph
+        print "Starting search in the graph with source: %s, sink: %s" % (src, dst)
+        node = graph.longest_path(dst)
+        src_node = graph.get_vrtx(src)
+        print "Node weight: %i, src.weight: %i, diff_path_weight: %i" % (node.weight, src_node.weight, node.weight - src_node.weight)
+        print "Length and backtrack"
+        print node.weight - src_node.weight
+        print graph.backtrack(node, src)
+        return graph
+
 
     #
     #   Assemble genome

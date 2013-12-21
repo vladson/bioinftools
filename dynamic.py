@@ -1,12 +1,14 @@
 import numpy
+import re
+
 
 class Dag:
 
-    def __init__(self):
+    def __init__(self, vrtx_real_dtrm=False):
         if not self.n:
             self.n = 0
             self.m = 0
-        self.vertices = [[DagVertex(0, coords=[i, j]) for i in range(self.m + 1)] for j in range(self.n + 1)]
+        self.vertices = [[DagVertex(0, coords=[i, j], real_dtrm=vrtx_real_dtrm) for i in range(self.m + 1)] for j in range(self.n + 1)]
 
     def __repr__(self):
         return numpy.matrix(self.vertices).__repr__()
@@ -42,7 +44,7 @@ class Dag:
         return ''.join(backtr[::-1])
 
     @staticmethod
-    def resolve_vertex(dag, vrtx):
+    def resolve_vertex(dag, vrtx, backtr):
         raise StandardError('Not Implemented')
 
     def prepare_sides(self):
@@ -54,29 +56,43 @@ class Dag:
 
 class DagVertex:
 
-    def __init__(self, weight, coords=[], ptr=0, real=False, name = ''):
+    raise 'Need smth to store direction: if del - we need to say nothing'
+    real_dtrm = lambda slf, x: x > 0
+
+    def __init__(self, weight, coords=[], ptr=0, real=False, name = '', real_dtrm=False):
         self.weight = weight
-        self.inbounds = []
-        self.outbounds = []
+        self.inbounds = {}
+        self.outbounds = {}
         self.coords = coords
         self.ptr = ptr
         self.real = real
         self.name = name
+        if real_dtrm:
+            self.real_dtrm = real_dtrm
 
     def update(self, vrtx):
         self.weight = vrtx.weight
         self.ptr = vrtx.ptr
         self.real = vrtx.real
 
+    def calculate_weight(self):
+        if self.indegree():
+            longest_in = max(self.inbounds.values(), key=lambda edg: edg.path_weight())
+            self.weight += longest_in.path_weight()
+            self.ptr = longest_in.src
+
     def indegree(self):
         return len(self.inbounds)
 
     def __repr__(self):
-        return self.weight.__repr__()
+        if self.name:
+            return self.name
+        else:
+            return self.weight.__repr__()
 
     def __add__(self, other):
         if isinstance(other, int):
-            return self.__class__(self.weight + other, ptr=self, real=(other > 0))
+            return self.__class__(self.weight + other, ptr=self, real=(self.real_dtrm(other)))
         elif isinstance(other, self.__class__):
             return self.__class__(self.weight + other.weight, ptr=self)
         else:
@@ -85,16 +101,48 @@ class DagVertex:
     def __cmp__(self, other):
         return cmp(self.weight, other.weight)
 
+class DagEdge:
+
+    def __init__(self, src, dst, weight=1):
+        self.src = src
+        self.dst=dst
+        self.weight = int(weight)
+        src.outbounds[dst.name] = self
+        dst.inbounds[src.name] = self
+
+    def __repr__(self):
+        return "%s-(%i)->%s" % (self.src.name, self.weight, self.dst.name)
+
+    def path_weight(self):
+        return self.src.weight + self.weight
+
 class ArbitryDag(Dag):
 
     def __init__(self):
         self.vertices = {}
         self.ordering = []
+        self.edges = []
 
-    def add_edge(self, src, dst):
+    def __repr__(self):
+        return ';'.join(map(lambda x: x.name, self.vertices.values()))
+
+    @classmethod
+    def from_lines(cls, lines=[]):
+        """
+        >>> ArbitryDag.from_lines(['0->1:7', '0->2:4', '2->3:2', '1->4:1', '3->4:3']).edges
+        [0-(7)->1, 0-(4)->2, 2-(2)->3, 1-(1)->4, 3-(3)->4]
+        """
+        parser = re.compile('(\d*)->(\d*):(\d*)')
+        graph = cls()
+        for line in lines:
+            graph.add_edge(*parser.search(line.strip()).groups())
+        return graph
+
+    def add_edge(self, src, dst, weight):
         src = self.get_vrtx(src)
         dst = self.get_vrtx(dst)
-        dst.inbounds.append(src)
+        edge = DagEdge(src, dst, weight)
+        self.edges.append(edge)
 
     def get_vrtx(self, name):
         if self.vertices.has_key(name):
@@ -104,10 +152,61 @@ class ArbitryDag(Dag):
             self.vertices[name] = vrtx
             return vrtx
 
-    def topological_ordering(self, src_node=''):
-        if src_node:
-            if self.get_vrtx(src_node).indegree():
-                raise StandardError('Source have incoming')
+    def starting_nodes(self):
+        return [vtx for vtx in self.vertices.values() if not vtx.indegree()]
+
+    def topological_ordering(self):
+        """
+        >>> ag = ArbitryDag.from_lines(['0->1:7', '0->2:4', '2->3:2', '1->4:1', '3->4:3'])
+        >>> ag.topological_ordering()
+        >>> ag.ordering
+        ['0', '2', '3', '1', '4']
+        """
+        self.ordering = []
+        ordering = self.starting_nodes()
+        indegrees = {}
+        while len(ordering):
+            src = ordering.pop()
+            self.ordering.append(src.name)
+            for edge in src.outbounds.values():
+                if indegrees.has_key(edge.dst.name):
+                    indegrees[edge.dst.name] += 1
+                else:
+                    indegrees[edge.dst.name] = 1
+                if edge.dst.indegree() == indegrees[edge.dst.name]:
+                    ordering.append(edge.dst)
+
+    def longest_path(self, dst=''):
+        """
+        >>> ArbitryDag.from_lines(['0->1:7', '0->2:4', '2->3:2', '1->4:1', '3->4:3']).longest_path().weight
+        Graph not odered. Ordering
+        9
+        """
+        if not self.ordering:
+            print 'Graph not odered. Ordering'
+            self.topological_ordering()
+        if not dst:
+            dst = self.ordering[-1]
+        for node in self.ordering:
+            node = self.get_vrtx(node)
+            node.calculate_weight()
+        return self.get_vrtx(dst)
+
+    @staticmethod
+    def backtrack(vertex, src=''):
+        """
+        >>> d = ArbitryDag.from_lines(['0->1:7', '0->2:4', '2->3:2', '1->4:1', '3->4:3']).longest_path()
+        Graph not odered. Ordering
+        >>> print ArbitryDag.backtrack(d)
+        0->2->3->4
+        """
+        back_track = vertex.name
+        while vertex.ptr:
+            vertex = vertex.ptr
+            back_track = ("%s->" % vertex.name) + back_track
+            if vertex.name == src:
+                break
+        return back_track
 
 
 class Manhattan(Dag):
