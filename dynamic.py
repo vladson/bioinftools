@@ -56,16 +56,21 @@ class Dag:
 
 class DagVertex:
 
-    raise 'Need smth to store direction: if del - we need to say nothing'
     real_dtrm = lambda slf, x: x > 0
 
-    def __init__(self, weight, coords=[], ptr=0, real=False, name = '', real_dtrm=False):
+    def __init__(self, weight, coords=[], ptr=0, real=False, direction=0, name = '', real_dtrm=False):
+        """
+        @type direction: int # if normal 1, if horizontal -1, if vertical -2
+        @type coords: list
+        @type weight: int
+        """
         self.weight = weight
         self.inbounds = {}
         self.outbounds = {}
         self.coords = coords
         self.ptr = ptr
         self.real = real
+        self.direction = direction
         self.name = name
         if real_dtrm:
             self.real_dtrm = real_dtrm
@@ -74,6 +79,7 @@ class DagVertex:
         self.weight = vrtx.weight
         self.ptr = vrtx.ptr
         self.real = vrtx.real
+        self.direction = vrtx.direction
 
     def calculate_weight(self):
         if self.indegree():
@@ -90,11 +96,11 @@ class DagVertex:
         else:
             return self.weight.__repr__()
 
-    def __add__(self, other):
+    def __add__(self, other, direction=0):
         if isinstance(other, int):
-            return self.__class__(self.weight + other, ptr=self, real=(self.real_dtrm(other)))
+            return self.__class__(self.weight + other, ptr=self, direction=direction, real=(self.real_dtrm(other)))
         elif isinstance(other, self.__class__):
-            return self.__class__(self.weight + other.weight, ptr=self)
+            return self.__class__(self.weight + other.weight, ptr=self, direction=direction)
         else:
             raise AttributeError('Not supported type')
 

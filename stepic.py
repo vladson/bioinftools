@@ -13,19 +13,23 @@ class Stepic:
         data = open(path)
         src = data.readline().strip()
         dst = data.readline().strip()
-        graph = alignment.BlosumAlign(src, dst)
+        graph = alignment.BlosumAlign(src, dst, -5)
         print 'Beginning calculations'
         path_node = graph.longest_path()
         print 'Score'
         print path_node
         print 'Backtrack'
-        print graph.backtrack(path_node)
+        print graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_1)
+        print graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_2)
         output = open('./output/global_align.txt', 'w')
+        #output.write(src + "\n")
+        #output.write(dst + "\n")
         output.write(str(path_node.weight) + "\n")
-        output.write(src + "\n")
-        output.write(graph.backtrack(path_node))
+        output.write(graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_1) + "\n")
+        output.write(graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_2) + "\n")
         print 'results written to ./output/global_align.txt'
-        return graph, path_node
+        #return graph, path_node
+        exit()
 
     @staticmethod
     def dag_longest(path):

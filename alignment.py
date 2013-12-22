@@ -41,7 +41,9 @@ class BlosumAlign(dynamic.Dag):
     >>> p = g.longest_path()
     >>> print p
     8
-    >>> print g.backtrack(p)
+    >>> print g.backtrack(p, BlosumAlign.resolve_vertex_1)
+    PLEASANTLY
+    >>> print g.backtrack(p, BlosumAlign.resolve_vertex_2)
     -MEA--N-LY
     """
 
@@ -64,19 +66,28 @@ class BlosumAlign(dynamic.Dag):
 
     def prepare_sides(self):
         for i in range(self.n):
-            self.vertices[i + 1][0].update(self.vertices[i][0] + self.sigma)
+            self.vertices[i + 1][0].update(self.vertices[i][0].__add__(self.sigma, -2))
         for i in range(self.m):
-            self.vertices[0][i + 1].update(self.vertices[0][i] + self.sigma)
+            self.vertices[0][i + 1].update(self.vertices[0][i].__add__(self.sigma, -1))
 
     def inbounds(self, i, j):
-        yield self.vertices[i][j + 1] + self.sigma
-        yield self.vertices[i + 1][j] + self.sigma
-        yield self.vertices[i][j] + self.blosum_62[self.v[i]][self.w[j]]
+        yield self.vertices[i][j + 1].__add__(self.sigma, -2)
+        yield self.vertices[i + 1][j].__add__(self.sigma, -1)
+        yield self.vertices[i][j].__add__(self.blosum_62[self.v[i]][self.w[j]], 1)
+
 
     @staticmethod
-    def resolve_vertex(dag, vrtx, backtr):
-        if vrtx.real:
+    def resolve_vertex_1(dag, vrtx, backtr):
+        if vrtx.direction == 1 or vrtx.direction == -2:
+            backtr.append(dag.v[vrtx.coords[1]-1])
+        elif vrtx.direction == -1:
+            backtr.append('-')
+
+
+    @staticmethod
+    def resolve_vertex_2(dag, vrtx, backtr):
+        if vrtx.direction == 1 or vrtx.direction == -1:
             backtr.append(dag.w[vrtx.coords[0]-1])
-        else:
+        elif vrtx.direction == -2:
             backtr.append('-')
 
