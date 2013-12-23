@@ -33,17 +33,17 @@ class SequenceAlignment(dynamic.Dag):
         if vrtx.real:
             backtr.append(dag.w[vrtx.coords[0]-1])
 
-class BlosumAlign(dynamic.Dag):
+class ScoredAlign(dynamic.Dag):
 
     """
     # Blosum 62 scoring matrix
-    >>> g = BlosumAlign('PLEASANTLY', 'MEANLY')
+    >>> g = ScoredAlign('PLEASANTLY', 'MEANLY')
     >>> p = g.longest_path()
     >>> print p
     8
-    >>> print g.backtrack(p, BlosumAlign.resolve_vertex_1)
+    >>> print g.backtrack(p, ScoredAlign.resolve_vertex_1)
     PLEASANTLY
-    >>> print g.backtrack(p, BlosumAlign.resolve_vertex_2)
+    >>> print g.backtrack(p, ScoredAlign.resolve_vertex_2)
     -MEA--N-LY
     """
 
@@ -56,13 +56,38 @@ class BlosumAlign(dynamic.Dag):
         blosum_62[dat[0]] = dict(zip(aa_keys, map(lambda s: int(s), dat[1:])))
     blosum_dat.close()
 
-    def __init__(self, v, w, sigma=-5):
+    pam250 = {}
+    pam250_dat = open('./PAM250_1.txt', 'r')
+    aa_keys = line_splitter.findall(pam250_dat.readline().strip())
+    for line in pam250_dat.readlines():
+        dat = line_splitter.findall(line.strip())
+        pam250[dat[0]] = dict(zip(aa_keys, map(lambda s: int(s), dat[1:])))
+    pam250_dat.close()
+
+    def __init__(self, v, w, sigma=-5, scorer=blosum_62):
         self.v = v
         self.w = w
         self.n = len(v)
         self.m = len(w)
         self.sigma = sigma
+        self.scorer = scorer
         dynamic.Dag.__init__(self, vrtx_real_dtrm=lambda x: not x == sigma)
+
+    def global_alignment(self):
+        """
+        >>> ScoredAlign('PLEASANTLY', 'MEANLY').global_alignment()
+        (8, 'PLEASANTLY', '-MEA--N-LY')
+        """
+        node = self.longest_path()
+        return node, self.backtrack(node, self.resolve_vertex_1), self.backtrack(node, self.resolve_vertex_2)
+
+    def local_alignment(self):
+        """
+        >>> ScoredAlign('MEANLY', 'PENALTY', scorer=ScoredAlign.pam250).local_alignment()
+        (15, 'EANL-Y', 'ENALTY')
+        """
+        node = self.longest_path(inbounds_mtd=self.local_inbounds)
+        return node, self.backtrack(node, self.resolve_vertex_1), self.backtrack(node, self.resolve_vertex_2)
 
     def prepare_sides(self):
         for i in range(self.n):
@@ -73,8 +98,13 @@ class BlosumAlign(dynamic.Dag):
     def inbounds(self, i, j):
         yield self.vertices[i][j + 1].__add__(self.sigma, -2)
         yield self.vertices[i + 1][j].__add__(self.sigma, -1)
-        yield self.vertices[i][j].__add__(self.blosum_62[self.v[i]][self.w[j]], 1)
+        yield self.vertices[i][j].__add__(self.scorer[self.v[i]][self.w[j]], 1)
 
+    def local_inbounds(self, i, j):
+        yield self.vertices[0][0] + 0
+        yield self.vertices[i][j + 1].__add__(self.sigma, -2)
+        yield self.vertices[i + 1][j].__add__(self.sigma, -1)
+        yield self.vertices[i][j].__add__(self.scorer[self.v[i]][self.w[j]], 1)
 
     @staticmethod
     def resolve_vertex_1(dag, vrtx, backtr):
@@ -90,4 +120,3 @@ class BlosumAlign(dynamic.Dag):
             backtr.append(dag.w[vrtx.coords[0]-1])
         elif vrtx.direction == -2:
             backtr.append('-')
-

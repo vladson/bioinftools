@@ -13,7 +13,7 @@ class Dag:
     def __repr__(self):
         return numpy.matrix(self.vertices).__repr__()
 
-    def longest_path(self):
+    def longest_path(self, inbounds_mtd=False, local=False):
         """
         #>>> strs = ["3 0 0 3 1 0 1 2 1 0 2 0", "3 3 4 1 0 1 2 1 3 0 2 1", "0 0 3 0 0 2 3 1 4 2 4 0", "0 3 4 0 2 4 0 2 4 4 2 1", "2 4 0 2 1 4 1 1 0 0 0 2", "-", "1 0 0 3 1 2 4 3 0 1 4", "1 2 3 2 4 1 4 2 3 4 0", "0 3 2 3 1 3 4 4 1 0 3", "0 4 1 1 4 3 0 0 2 4 4", "2 3 4 2 2 4 3 3 3 3 4", "1 1 4 0 4 4 3 4 1 3 3"]
         #>>> Manhattan.from_strings(strs).longest_path()
@@ -25,10 +25,13 @@ class Dag:
         35
         """
         self.prepare_sides()
-
+        if not inbounds_mtd:
+            inbounds_mtd = self.inbounds
         for i in range(self.n):
             for j in range(self.m):
-                self.vertices[i + 1][j + 1].update(max(self.inbounds(i, j)))
+                self.vertices[i + 1][j + 1].update(max(inbounds_mtd(i, j)))
+        if local:
+            self.vertices[self.n][self.m].update(max(vtx for row in self.vertices for vtx in row))
         return self.vertices[self.n][self.m]
 
     def backtrack(self, vertex, reslv_fnc=False):

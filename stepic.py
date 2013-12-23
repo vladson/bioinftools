@@ -9,24 +9,48 @@ class Stepic:
     #
 
     @staticmethod
+    def local_align(path, test=False):
+        data = open(path)
+        src = data.readline().strip()
+        dst = data.readline().strip()
+        graph = alignment.ScoredAlign(src, dst, -5, scorer=alignment.ScoredAlign.pam250)
+        print 'Beginning calculations'
+        node, align_1st, align_2nd = graph.local_alignment()
+        print 'Score'
+        print node
+        print 'Backtrack'
+        print align_1st
+        print align_2nd
+        output = open('./output/local_align.txt', 'w')
+        output.write(str(node.weight) + "\n")
+        if test:
+            output.write(src + "\n")
+        output.write(align_1st + "\n")
+        if test:
+            output.write("\n")
+            output.write(dst + "\n")
+        output.write(align_2nd + "\n")
+        print 'results written to ./output/local_align.txt'
+        #return graph, path_node
+        exit()
+
+    @staticmethod
     def global_align(path):
         data = open(path)
         src = data.readline().strip()
         dst = data.readline().strip()
-        graph = alignment.BlosumAlign(src, dst, -5)
+        graph = alignment.ScoredAlign(src, dst, -5)
         print 'Beginning calculations'
-        path_node = graph.longest_path()
+        node, align_1st, align_2nd = graph.global_alignment()
         print 'Score'
-        print path_node
+        print node
         print 'Backtrack'
-        print graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_1)
-        print graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_2)
+        print align_1st
+        print align_2nd
         output = open('./output/global_align.txt', 'w')
-        #output.write(src + "\n")
-        #output.write(dst + "\n")
-        output.write(str(path_node.weight) + "\n")
-        output.write(graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_1) + "\n")
-        output.write(graph.backtrack(path_node, alignment.BlosumAlign.resolve_vertex_2) + "\n")
+        output.write(str(node.weight) + "\n")
+        output.write(align_1st + "\n")
+        output.write(align_2nd + "\n")
         print 'results written to ./output/global_align.txt'
         #return graph, path_node
         exit()
