@@ -31,8 +31,9 @@ class Dag:
             for j in range(self.m):
                 self.vertices[i + 1][j + 1].update(max(inbounds_mtd(i, j)))
         if local:
-            self.vertices[self.n][self.m].update(max(vtx for row in self.vertices for vtx in row))
-        return self.vertices[self.n][self.m]
+            return max(vtx for row in self.vertices for vtx in row)
+        else:
+            return self.vertices[self.n][self.m]
 
     def backtrack(self, vertex, reslv_fnc=False):
         """

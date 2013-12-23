@@ -85,8 +85,9 @@ class ScoredAlign(dynamic.Dag):
         """
         >>> ScoredAlign('MEANLY', 'PENALTY', scorer=ScoredAlign.pam250).local_alignment()
         (15, 'EANL-Y', 'ENALTY')
+
         """
-        node = self.longest_path(inbounds_mtd=self.local_inbounds)
+        node = self.longest_path(inbounds_mtd=self.local_inbounds, local=True)
         return node, self.backtrack(node, self.resolve_vertex_1), self.backtrack(node, self.resolve_vertex_2)
 
     def prepare_sides(self):
