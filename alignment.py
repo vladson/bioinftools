@@ -90,6 +90,8 @@ class ScoredAlign(dynamic.Dag):
         node = self.longest_path(inbounds_mtd=self.local_inbounds, local=True)
         return node, self.backtrack(node, self.resolve_vertex_1), self.backtrack(node, self.resolve_vertex_2)
 
+
+
     def prepare_sides(self):
         for i in range(self.n):
             self.vertices[i + 1][0].update(self.vertices[i][0].__add__(self.sigma, -2))
@@ -107,6 +109,7 @@ class ScoredAlign(dynamic.Dag):
         yield self.vertices[i + 1][j].__add__(self.sigma, -1)
         yield self.vertices[i][j].__add__(self.scorer[self.v[i]][self.w[j]], 1)
 
+
     @staticmethod
     def resolve_vertex_1(dag, vrtx, backtr):
         if vrtx.direction == 1 or vrtx.direction == -2:
@@ -121,3 +124,4 @@ class ScoredAlign(dynamic.Dag):
             backtr.append(dag.w[vrtx.coords[0]-1])
         elif vrtx.direction == -2:
             backtr.append('-')
+
