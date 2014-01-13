@@ -1,3 +1,6 @@
+import re
+
+
 class Permutation:
 
     def __init__(self, representation, dst = False):
@@ -15,7 +18,7 @@ class Permutation:
         if isinstance(representation, list):
             perm = representation
         else:
-            perm = map(lambda s: int(s), representation.strip()[1:-1].split(' '))
+            perm =Permutation.parse_repr(representation)[0]
         self.perm = perm
         self.initital_perm = perm
         if dst:
@@ -128,4 +131,128 @@ class Permutation:
             if i < 0:
                 repr.append("%i" % i)
         return '(' + " ".join(repr) + ')'
+
+    @staticmethod
+    def parse_repr(repr):
+        """
+        >>> Permutation.parse_repr('(+1 -3 -6 -5)(+2 -4)')
+        [[1, -3, -6, -5], [2, -4]]
+        >>> Permutation.parse_repr(' (-3 +4 +1 +5 -2)  ')[0]
+        [-3, 4, 1, 5, -2]
+        """
+        return map(lambda literal: map(lambda item: int(item), literal.split()) ,re.findall('\(([^()]*)\)+', repr))
+
+class CircularGenome:
+
+    def __init__(self, genome):
+        self.genome = genome
+        self.genome.append(genome[0])
+
+    def pairs(self):
+        for i in xrange(len(self.genome) - 1):
+            yield self.genome[i:i+2]
+
+class BreakpointGraph:
+
+    """
+    >>> BreakpointGraph.from_genome('(+1 +2 +3 +4 +5 +6)')
+    (+1 +2 +3 +4 +5 +6)
+    >>> BreakpointGraph.from_genome('(+1 -3 -6 -5)(+2 -4)')
+    (+1 +2 +3 +4 +5 +6)
+    >>> BreakpointGraph.from_genome('(+1 +2 +3 +4 +5 +6)').add_genomes('(+1 -3 -6 -5)(+2 -4)').calculate_cycles().cycles_num()
+    3
+    >>> BreakpointGraph.from_genome('(+1 +2 +3 +4 +5 +6)').add_genomes('(+1 -3 -6 -5)(+2 -4)').calculate_cycles().db_distance()
+    3
+    """
+
+    def __init__(self):
+        self.cycles = []
+        self.nodes = {}
+        self.blocks = set()
+
+    @classmethod
+    def from_genome(cls, genomes):
+        graph = cls()
+        if isinstance(genomes, str):
+            genomes = Permutation.parse_repr(genomes)
+        graph.add_genomes(genomes)
+        return graph
+
+    def add_genomes(self, genomes):
+        if isinstance(genomes, str):
+            genomes = Permutation.parse_repr(genomes)
+        for genome in genomes:
+            self.add_genome(genome)
+        return self
+
+    def add_genome(self, genome):
+        if not isinstance(genome, CircularGenome):
+            genome = CircularGenome(genome)
+        for pair in genome.pairs():
+            self.add_pair(*pair)
+
+    def calculate_cycles(self):
+        tracker = list(self.nodes.keys())
+        while len(tracker):
+            self.cycles.append(BreakpointCycle(self.get_node(tracker.pop())).traverse(tracker))
+        return self
+
+    def add_pair(self, node_a, node_b):
+        a = self.get_node(node_a)
+        b = self.get_node(node_b)
+        a.add_edge(b)
+
+    def get_node(self, node):
+        """
+        @return BreakpointNode
+        """
+        if not self.nodes.has_key(node):
+            self.nodes[node] = BreakpointNode(node)
+            self.blocks.add(abs(node))
+        return self.nodes[node]
+
+    def block_num(self):
+        """
+        >>> BreakpointGraph.from_genome('(+1 +2 +3 +4 +5 +6)').block_num()
+        6
+        """
+        return len(self.blocks)
+
+    def cycles_num(self):
+        return len(self.cycles)
+
+    def db_distance(self):
+        return self.block_num() - self.cycles_num()
+
+    def __repr__(self):
+        return Permutation.out_perm(self.blocks)
+
+class BreakpointNode:
+
+    def __init__(self, node):
+        self.node = node
+        self.edges = []
+
+    def add_edge(self, dst):
+        self.edges.append(dst)
+
+    def has_edges(self):
+        return len(self.edges)
+
+    def pop_edge(self):
+        return self.edges.pop()
+
+class BreakpointCycle:
+
+    def __init__(self, node):
+        self.cycle = [node]
+
+    def traverse(self, tracker):
+        while self.cycle[-1].has_edges():
+            node = self.cycle[-1].pop_edge()
+            self.cycle.append(node)
+            if node.node in tracker:
+                tracker.remove(node.node)
+        return self
+
 

@@ -1,8 +1,20 @@
-import dna, rna, protein, assembler, eulerian, universal_string, dynamic, alignment
+import dna, rna, protein, assembler, eulerian, universal_string, dynamic, alignment, rearrangements
 
 class Stepic:
 
     test = True
+
+    @staticmethod
+    def double_break_distance(path, test=True):
+        data = open(path)
+        if test:
+            data.readline()
+        genome1 = data.readline().strip()
+        genome2 = data.readline().strip()
+        graph = rearrangements.BreakpointGraph.from_genome(genome1).add_genomes(genome2)
+        print "Graph of %i nodes. Beginning cycles calculation" % graph.block_num()
+        graph.calculate_cycles()
+        print "Calculated! Cycles: %i, blocks %i, Double Break distance %i" % (graph.cycles_num(), graph.block_num(), graph.db_distance())
 
     #
     #   Sequence alignment
