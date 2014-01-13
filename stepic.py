@@ -4,6 +4,10 @@ class Stepic:
 
     test = True
 
+    #
+    # Genetic rearrangements
+    #
+
     @staticmethod
     def double_break_distance(path, test=True):
         data = open(path)
@@ -15,10 +19,6 @@ class Stepic:
         print "Graph of %i nodes. Beginning cycles calculation" % graph.block_num()
         graph.calculate_cycles()
         print "Calculated! Cycles: %i, blocks %i, Double Break distance %i" % (graph.cycles_num(), graph.block_num(), graph.db_distance())
-
-    #
-    # Genetic rearrangements
-    #
 
     @staticmethod
     def greedy_sorting(path, test= False):
