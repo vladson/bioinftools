@@ -17,8 +17,65 @@ class Stepic:
         print "Calculated! Cycles: %i, blocks %i, Double Break distance %i" % (graph.cycles_num(), graph.block_num(), graph.db_distance())
 
     #
+    # Genetic rearrangements
+    #
+
+    @staticmethod
+    def greedy_sorting(path, test= False):
+        data = open(path)
+        if test:
+            data.readline()
+        permutation = rearrangements.Permutation(data.readline())
+        print "Permutation is %i long" % len(permutation.perm)
+        otp = open('output/greedy_sorting.txt', 'w')
+        print "Beginning"
+        for item in permutation.greedy_sorting():
+            otp.write(rearrangements.Permutation.out_perm(item) + '\n')
+        otp.close()
+        print "Done. Written."
+
+    @staticmethod
+    def breakpoints_count(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        permutation = rearrangements.Permutation(data.readline())
+        print "Permutation is %i long" % len(permutation.perm)
+        print "Beginning breakpoints"
+        breakpoints = permutation.breakpoints()
+        print "Breakpoints"
+        print breakpoints
+        print "Breakpoints count is %i" % len(breakpoints)
+
+    #
     #   Sequence alignment
     #
+
+    @staticmethod
+    def edit_distance(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        src = data.readline().strip()
+        dst = data.readline().strip()
+        if test:
+            data.readline()
+            check = data.readline()
+        data.close()
+        graph = alignment.ScoredAlign(src, dst, -5)
+        print 'Beginning calculations of edit distance'
+        results, node = graph.edit_distance()
+        print results
+        if test:
+            otp = open('output/edit_distance.txt', 'w')
+            print "should be %s" % check
+            otp.write(str(results)+"\n")
+            otp.write(check)
+            otp.write(src + "\n")
+            otp.write(dst + "\n")
+            otp.write(graph.backtrack(node, graph.__class__.resolve_vertex_levenstein))
+            otp.close()
+        #return graph, node
 
     @staticmethod
     def local_align(path, test=False):
