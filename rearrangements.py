@@ -199,8 +199,9 @@ class BreakpointGraph:
 
     def add_pair(self, node_a, node_b):
         a = self.get_node(node_a)
-        b = self.get_node(node_b)
+        b = self.get_node(node_b * -1)
         a.add_edge(b)
+        b.add_edge(a)
 
     def get_node(self, node):
         """
@@ -233,6 +234,9 @@ class BreakpointNode:
         self.node = node
         self.edges = []
 
+    def __repr__(self):
+        return "%i (%s)" % (self.node, ', '.join(map(lambda n: str(n.node), self.edges)))
+
     def add_edge(self, dst):
         self.edges.append(dst)
 
@@ -240,12 +244,17 @@ class BreakpointNode:
         return len(self.edges)
 
     def pop_edge(self):
-        return self.edges.pop()
+        node = self.edges.pop()
+        node.edges.remove(self)
+        return node
 
 class BreakpointCycle:
 
     def __init__(self, node):
         self.cycle = [node]
+
+    def __repr__(self):
+        return self.cycle.__repr__()
 
     def traverse(self, tracker):
         while self.cycle[-1].has_edges():

@@ -9,7 +9,7 @@ class Stepic:
     #
 
     @staticmethod
-    def double_break_distance(path, test=True):
+    def double_break_distance(path, test=False):
         data = open(path)
         if test:
             data.readline()
