@@ -22,13 +22,20 @@ class Dna:
     def __eq__(self, other):
         return self.genome == other.genome
 
+    def __len__(self):
+        return len(self.genome)
+
     def complementary(self):
         """
         >>> dna = Dna('AAAACCCGGT')
         >>> dna.complementary()
         ACCGGGTTTT
         """
-        return self.__class__(''.join(map(lambda c: self.conversion_table[c], self.genome))[::-1])
+        return self.__class__(self.complementary_fragment(self.genome))
+
+    @classmethod
+    def complementary_fragment(cls, fragment):
+        return ''.join(map(lambda c: cls.conversion_table[c], fragment))[::-1]
 
     def to_rna(self):
         """

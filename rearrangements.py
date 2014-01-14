@@ -1,4 +1,5 @@
 import re
+import dna
 
 
 class Permutation:
@@ -264,4 +265,44 @@ class BreakpointCycle:
                 tracker.remove(node.node)
         return self
 
+class SyntenyConstructor:
 
+    """
+    >>> SyntenyConstructor('ACTG', 'ATGTA')
+    SyntenyConstructor for dna_A of 4 bp and dna_B of 5 bp
+    """
+
+    def __init__(self, dna_a, dna_b):
+        if not isinstance(dna_a, dna.Dna):
+            dna_a = dna.Dna(dna_a)
+        if not isinstance(dna_b, dna.Dna):
+            dna_b = dna.Dna(dna_b)
+        self.dna_a = dna_a
+        self.dna_b = dna_b
+
+    def __repr__(self):
+        return "SyntenyConstructor for dna_A of %i bp and dna_B of %i bp" % (len(self.dna_a), len(self.dna_b))
+
+    def shared_kmer_indices(self, k):
+        """
+        >>> list(SyntenyConstructor('AAACTCATC', 'TTTCAAATC').shared_kmer_indices(3))
+        [(0, 4), (0, 0), (4, 2), (6, 6)]
+        """
+        b_kmer_tree = {}
+        for index, kmer in enumerate(self.dna_b.kmer_generator(k)):
+            if b_kmer_tree.has_key(kmer):
+                b_kmer_tree[kmer].append(index)
+            else:
+                b_kmer_tree[kmer] = [index]
+
+        for index, kmer in enumerate(self.dna_a.kmer_generator(k)):
+            if b_kmer_tree.has_key(kmer):
+                for jindex in b_kmer_tree[kmer]:
+                    yield index, jindex
+            # if b_kmer_tree.has_key(kmer[::-1]):
+            #     yield index, b_kmer_tree[kmer[::-1]]
+            if b_kmer_tree.has_key(dna.Dna.complementary_fragment(kmer)):
+                for jindex in b_kmer_tree[dna.Dna.complementary_fragment(kmer)]:
+                    yield index, jindex
+            # if b_kmer_tree.has_key(dna.Dna.complementary_fragment(kmer)[::-1]):
+            #     yield index, b_kmer_tree[dna.Dna.complementary_fragment(kmer)[::-1]]

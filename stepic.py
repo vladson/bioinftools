@@ -9,6 +9,32 @@ class Stepic:
     #
 
     @staticmethod
+    def shared_kmers(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        k = int(data.readline().strip())
+        genome1 = data.readline().strip()
+        genome2 = data.readline().strip()
+        constructor = rearrangements.SyntenyConstructor(genome1, genome2)
+        if test:
+            data.readline()
+            test_data = map(lambda s: s.strip(), data.readlines())
+        data.close()
+        print constructor
+        otp = open('output/shared_kmers.txt', 'w')
+        print "Beginning shared kmers search with k = %i" % k
+        for item in constructor.shared_kmer_indices(k):
+            if test and str(item) in test_data:
+                test_data.remove(str(item))
+            otp.write(str(item) + '\n')
+        otp.close()
+        print "Done. Written."
+        if test:
+            print 'Test data mismatch:'
+            print test_data
+
+    @staticmethod
     def double_break_distance(path, test=False):
         data = open(path)
         if test:
