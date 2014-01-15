@@ -1,8 +1,34 @@
 import dna, rna, protein, assembler, eulerian, universal_string, dynamic, alignment, rearrangements
+import read_mapping
+
 
 class Stepic:
 
     test = True
+
+    #
+    # Read Mapping
+    #
+
+    @staticmethod
+    def trie_matching(path):
+        data = open(path)
+        reference_genome = data.readline().strip()
+        print 'Constructing'
+        trie = read_mapping.Trie(*data.readlines())
+        print 'Matching'
+        print ' '.join(map(lambda x: str(x), trie.long_string_matches_indices(reference_genome)))
+
+    @staticmethod
+    def trie_construction(path):
+        data = open(path)
+        print 'Constructing'
+        trie = read_mapping.Trie(*data.readlines())
+        data.close()
+        output = open('output/trie.txt', 'w')
+        for (i, j, l) in trie.triplets():
+            output.write("%i %i %s\n" % (i,j,l))
+        output.close()
 
     #
     # Genetic rearrangements
