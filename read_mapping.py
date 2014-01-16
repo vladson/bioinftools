@@ -131,7 +131,11 @@ class SuffixTrie:
 
 class SuffixEdge:
 
-    def __init__(self, text, children=[], starts=[]):
+    def __init__(self, text, children=None, starts=None):
+        if children == None:
+            children = []
+        if starts == None:
+            starts = []
         self.label = text
         self.children = children
         self.starts = starts
@@ -143,18 +147,18 @@ class SuffixEdge:
         if text:
             edges = [edge for edge in self.children if edge.label.startswith(text[0])]
         if text == '' or text == self.label:
-            print 'none'
+            # print 'none'
             self.starts.append(start)
         elif len(edges) > 0:
             child = edges[0]
             if text.startswith(child.label):
-                print 'append'
+                # print "child append %s" % text
                 child.append(text[len(child.label):], start)
             else:
-                print 'split'
+                # print "split %s" % text
                 child.split(text, start)
         else:
-            print 'append'
+            # print "append %s" % text
             self.children.append(SuffixEdge(text[len(self.label):], starts=[start]))
 
     def split(self, text, start):
@@ -163,13 +167,13 @@ class SuffixEdge:
             split_offset = i
             if not self.label[i] == text[i]:
                 break
-        print split_offset, self.label, text
-        edge_1 = SuffixEdge(self.label[split_offset:], self.children, self.starts)
+        # print split_offset, self.label, text, self.children
+        edge_1 = SuffixEdge(self.label[split_offset:], self.children[:], self.starts)
         edge_2 = SuffixEdge(text[split_offset:], starts=[start])
         self.label = self.label[:split_offset]
         self.children = [edge_1, edge_2]
 
-    def longest_repeat(self, parent=''):
+    def longest_repeat(self, parent):
         if self.children:
             child_seq = [child.longest_repeat(parent + self.label) for child in self.children]
             return max(child_seq, key=lambda x:len(x))
@@ -177,7 +181,7 @@ class SuffixEdge:
             return parent
 
     def traverse(self):
-        print self.children.count()
+        print self.label
         for edge in self.children:
             edge.traverse()
 
@@ -186,6 +190,22 @@ class SuffixTree:
 
     """
     >>> SuffixTree('ATAAATG$')
+    [A (0), T (1), G$ (6), $ (7)]
+    >>> SuffixTree('ATAAATG$').traverse()
+    <BLANKLINE>
+    A
+    T
+    AAATG$
+    G$
+    A
+    ATG$
+    TG$
+    T
+    AAATG$
+    G$
+    G$
+    $
+     >>> SuffixTree('ATATCGTTTTATCGTT').longest_repeat()
     """
 
     def __init__(self, text):
@@ -197,6 +217,8 @@ class SuffixTree:
         return self.root.children.__repr__()
 
     def longest_repeat(self):
-        return self.root.longest_repeat()
+        return self.root.longest_repeat('')
 
+    def traverse(self):
+        self.root.traverse()
 

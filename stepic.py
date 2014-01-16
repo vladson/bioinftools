@@ -11,6 +11,18 @@ class Stepic:
     #
 
     @staticmethod
+    def longest_path(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        genome = data.readline().strip()
+        print genome
+        print 'Constructing'
+        tree = read_mapping.SuffixTree(genome)
+        print tree.longest_repeat()
+
+
+    @staticmethod
     def trie_matching(path):
         data = open(path)
         reference_genome = data.readline().strip()
