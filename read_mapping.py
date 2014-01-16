@@ -159,7 +159,7 @@ class SuffixEdge:
                 child.split(text, start)
         else:
             # print "append %s" % text
-            self.children.append(SuffixEdge(text[len(self.label):], starts=[start]))
+            self.children.append(SuffixEdge(text, starts=[start]))
 
     def split(self, text, start):
         split_offset = 0
@@ -180,10 +180,14 @@ class SuffixEdge:
         else:
             return parent
 
-    def traverse(self):
-        print self.label
+    def traverse(self, buffer=None):
+        if self.label:
+            if isinstance(buffer, list):
+                buffer.append(self.label)
+            else:
+                print self.label
         for edge in self.children:
-            edge.traverse()
+            edge.traverse(buffer)
 
 
 class SuffixTree:
@@ -192,7 +196,6 @@ class SuffixTree:
     >>> SuffixTree('ATAAATG$')
     [A (0), T (1), G$ (6), $ (7)]
     >>> SuffixTree('ATAAATG$').traverse()
-    <BLANKLINE>
     A
     T
     AAATG$
@@ -205,7 +208,10 @@ class SuffixTree:
     G$
     G$
     $
-     >>> SuffixTree('ATATCGTTTTATCGTT').longest_repeat()
+    >>> SuffixTree('ATAAATG$').traverse([])
+    ['A', 'T', 'AAATG$', 'G$', 'A', 'ATG$', 'TG$', 'T', 'AAATG$', 'G$', 'G$', '$']
+    >>> SuffixTree('ATATCGTTTTATCGTT').longest_repeat()
+    'TATCGT'
     """
 
     def __init__(self, text):
@@ -219,6 +225,7 @@ class SuffixTree:
     def longest_repeat(self):
         return self.root.longest_repeat('')
 
-    def traverse(self):
-        self.root.traverse()
+    def traverse(self, buffer=None):
+        self.root.traverse(buffer)
+        return buffer
 

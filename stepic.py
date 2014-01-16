@@ -11,6 +11,34 @@ class Stepic:
     #
 
     @staticmethod
+    def suffix_tree_construct(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        genome = data.readline().strip()
+        if test:
+            data.readline()
+            test_traversal = map(lambda x: x.strip(), data.readlines())
+            print "Test nodes count: %i" % len(test_traversal)
+        print genome
+        print 'Constructing'
+        tree = read_mapping.SuffixTree(genome)
+        out = open('output/suffix_tree.txt', 'w')
+        print 'Tree output'
+        traversal = tree.traverse([])
+        print "Nodes count: %i" % len(traversal)
+        for node in traversal:
+            out.write(node + '\n')
+            if test:
+                try:
+                    test_traversal.remove(node)
+                except ValueError:
+                    print "Not in test values: '%s'" % node
+        out.close()
+        if test:
+            print len(test_traversal)
+
+    @staticmethod
     def longest_path(path, test=False):
         data = open(path)
         if test:
