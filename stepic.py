@@ -11,6 +11,39 @@ class Stepic:
     #
 
     @staticmethod
+    def shortest_unshared(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        seq_1 = data.readline().strip()
+        seq_2 = data.readline().strip()
+        if test:
+            data.readline()
+            test_str = data.readline().strip()
+        print 'Calculating'
+        unshared = read_mapping.SuffixTree.shortest_unshared_between(seq_2, seq_1)
+        print unshared
+        print read_mapping.SuffixTree(seq_2).root.shared_suffix(unshared)
+        if test:
+            print test_str
+
+    @staticmethod
+    def longest_shared(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        seq_1 = data.readline().strip()
+        seq_2 = data.readline().strip()
+        if test:
+            data.readline()
+            test_str = data.readline().strip()
+        print 'Calculating'
+        shared = read_mapping.SuffixTree.longest_shared_between(seq_1, seq_2)
+        print shared
+        if test:
+            print test_str
+
+    @staticmethod
     def suffix_tree_construct(path, test=False):
         data = open(path)
         if test:

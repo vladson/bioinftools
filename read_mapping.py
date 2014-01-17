@@ -189,6 +189,29 @@ class SuffixEdge:
         for edge in self.children:
             edge.traverse(buffer)
 
+    def shared_suffix(self, sequence):
+        """
+        >>> SuffixTree('TCGGTAGATTGCGCCCACTC$').root.shared_suffix('AGAA')
+        'AGA'
+        """
+        shared_part = ''
+        if sequence:
+            if len(self.label) == 0 or sequence.startswith(self.label):
+                try:
+                    child = next(child for child in self.children if child.label[0] == sequence[len(self.label)])
+                    shared_part = self.label + child.shared_suffix(sequence[len(self.label):])
+                except StopIteration:
+                    shared_part = self.label
+                except IndexError:
+                    shared_part = self.label[:len(sequence)]
+            else:
+                for i in xrange(min(len(sequence), len(self.label))):
+                    if not sequence[i] == self.label[i]:
+                        shared_part = sequence[:i]
+                        break
+        # print 'returning %s' % shared_part
+        return shared_part
+
 
 class SuffixTree:
 
@@ -229,3 +252,41 @@ class SuffixTree:
         self.root.traverse(buffer)
         return buffer
 
+    @classmethod
+    def longest_shared_between(cls, seq_1, seq_2):
+        """
+        >>> SuffixTree.longest_shared_between('TCGGTAGATTGCGCCCACTC', 'AGGGGCTCGCAGTGTAAGAA')
+        'AGA'
+        """
+        tree = cls(seq_1 + '$')
+        return tree.longest_shared_with(seq_2)
+
+    def longest_shared_with(self, sequence_2):
+        longest_shared = ''
+        for i in xrange(len(sequence_2) - 1):
+            new_shared = self.root.shared_suffix(sequence_2[i:])
+            if len(new_shared) >= len(longest_shared):
+                longest_shared = new_shared
+        return longest_shared
+
+    @classmethod
+    def shortest_unshared_between(cls, seq_1, seq_2):
+        """
+        >>> SuffixTree.shortest_unshared_between('CCAAGCTGCTAGAGG', 'CATGCTGGGCTGGCT')
+        'AG'
+        """
+        tree = cls(seq_2+'$')
+        return tree.shortest_unshared(seq_1)
+
+    def shortest_unshared(self, sequence_2):
+        """
+        >>> SuffixTree('CATGCTGGGCTGGCT$').shortest_unshared('CCAAGCTGCTAGAGG')
+        'AG'
+        """
+        shortest_unshared = sequence_2[:]
+        tl = len(sequence_2)
+        for i in xrange(1 + len(sequence_2) - 2):
+            shared = self.root.shared_suffix(sequence_2[i:])
+            if len(shared) + 1 < len(shortest_unshared) and len(shared) < tl - i:
+                shortest_unshared = shared + sequence_2[i + len(shared)]
+        return shortest_unshared
