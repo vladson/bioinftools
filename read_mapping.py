@@ -131,11 +131,17 @@ class SuffixTrie:
 
 class SuffixEdge:
 
-    def __init__(self, text, children=None, starts=None):
+    def __init__(self, text, children=None, starts=None, seq_ids=None):
         if children == None:
             children = []
         if starts == None:
             starts = []
+        if seq_ids == None:
+            self.seq_ids = set()
+        elif isinstance(seq_ids, int) or isinstance(seq_ids, str):
+            self.seq_ids = set(seq_ids)
+        else:
+            self.seq_ids = seq_ids
         self.label = text
         self.children = children
         self.starts = starts
@@ -143,34 +149,37 @@ class SuffixEdge:
     def __repr__(self):
         return "%s (%s)" % (self.label, ', '.join(map(lambda x: str(x), self.starts)))
 
-    def append(self, text, start):
-        if text:
-            edges = [edge for edge in self.children if edge.label.startswith(text[0])]
-        if text == '' or text == self.label:
+    def append(self, text, start, seq_id=None):
+        if text == '':
             # print 'none'
             self.starts.append(start)
-        elif len(edges) > 0:
-            child = edges[0]
-            if text.startswith(child.label):
-                # print "child append %s" % text
-                child.append(text[len(child.label):], start)
-            else:
-                # print "split %s" % text
-                child.split(text, start)
+            if seq_id:
+                self.seq_ids.add(seq_id)
         else:
-            # print "append %s" % text
-            self.children.append(SuffixEdge(text, starts=[start]))
+            try:
+                child = next(edge for edge in self.children if edge.label.startswith(text[0]))
+                if text.startswith(child.label):
+                    # print "child append %s" % text
+                    child.append(text[len(child.label):], start, seq_id)
+                else:
+                    # print "split %s" % text
+                    child.split(text, start, seq_id)
+            except StopIteration:
+                # print "append %s" % text
+                self.children.append(SuffixEdge(text, starts=[start], seq_ids=seq_id))
 
-    def split(self, text, start):
+    def split(self, text, start, seq_id=None):
         split_offset = 0
         for i in range(min(len(self.label), len(text))):
             split_offset = i
             if not self.label[i] == text[i]:
                 break
         # print split_offset, self.label, text, self.children
-        edge_1 = SuffixEdge(self.label[split_offset:], self.children[:], self.starts)
-        edge_2 = SuffixEdge(text[split_offset:], starts=[start])
+        edge_1 = SuffixEdge(self.label[split_offset:], self.children[:], self.starts, self.seq_ids)
+        edge_2 = SuffixEdge(text[split_offset:], starts=[start], seq_ids=seq_id)
         self.label = self.label[:split_offset]
+        if seq_id:
+            self.seq_ids.add(seq_id)
         self.children = [edge_1, edge_2]
 
     def longest_repeat(self, parent):
@@ -188,6 +197,23 @@ class SuffixEdge:
                 print self.label
         for edge in self.children:
             edge.traverse(buffer)
+
+    def bfs_paths(self, condition=lambda n, c, p: c.label[-1] == '$', out=lambda n, c, p: p + n.label + c.label):
+        """
+        @param comparer: function, lambda taking node child and path
+        @return: generator of path, can
+        >>> list(SuffixTree('TCGGTAGATTGCGCCCACTC$', 'A').root.bfs_paths())
+        ['$', 'AGATTGCGCCCACTC$', 'ATTGCGCCCACTC$', 'ACTC$', 'GGTAGATTGCGCCCACTC$', 'GTAGATTGCGCCCACTC$', 'GATTGCGCCCACTC$', 'GCGCCCACTC$', 'GCCCACTC$', 'CACTC$', 'CTC$', 'C$', 'CCCACTC$', 'CCACTC$', 'CGGTAGATTGCGCCCACTC$', 'CGCCCACTC$', 'TAGATTGCGCCCACTC$', 'TTGCGCCCACTC$', 'TGCGCCCACTC$', 'TCGGTAGATTGCGCCCACTC$', 'TC$']
+        """
+        queue = [(self, '')]
+        while len(queue):
+            (node, path) = queue.pop()
+            for child in node.children:
+                if condition(node, child, path):
+                    yield out(node, child, path)
+                else:
+                    queue.append((child, path + node.label))
+
 
     def shared_suffix(self, sequence):
         """
@@ -237,13 +263,17 @@ class SuffixTree:
     'TATCGT'
     """
 
-    def __init__(self, text):
+    def __init__(self, text, id=None):
         self.root = SuffixEdge('')
-        for i in xrange(len(text)):
-            self.root.append(text[i:], start=i)
+        self.append_named_sequence(text, id)
 
     def __repr__(self):
         return self.root.children.__repr__()
+
+    def append_named_sequence(self, sequence, id=None):
+        for i in xrange(len(sequence)):
+            self.root.append(sequence[i:], start=i, seq_id=id)
+        return self
 
     def longest_repeat(self):
         return self.root.longest_repeat('')
@@ -258,8 +288,19 @@ class SuffixTree:
         >>> SuffixTree.longest_shared_between('TCGGTAGATTGCGCCCACTC', 'AGGGGCTCGCAGTGTAAGAA')
         'AGA'
         """
-        tree = cls(seq_1 + '$')
-        return tree.longest_shared_with(seq_2)
+        tree = cls(seq_2 + '$', 'B').append_named_sequence(seq_1 + '$', 'A')
+        condition = lambda n, c, p: 'B' not in c.seq_ids
+        out = lambda n, c, p: p + n.label
+        unshared = tree.root.bfs_paths(condition, out)
+        shortest = next(unshared)
+        common = [shortest]
+        for possible in unshared:
+            if len(possible) > len(shortest) and not possible[-1] == '$':
+                shortest = possible
+                common = [possible]
+            elif len(possible) == len(shortest) and not possible[-1] == '$':
+                common.append(possible)
+        return min(common)
 
     def longest_shared_with(self, sequence_2):
         longest_shared = ''
@@ -273,20 +314,18 @@ class SuffixTree:
     def shortest_unshared_between(cls, seq_1, seq_2):
         """
         >>> SuffixTree.shortest_unshared_between('CCAAGCTGCTAGAGG', 'CATGCTGGGCTGGCT')
-        'AG'
+        'AA'
         """
-        tree = cls(seq_2+'$')
-        return tree.shortest_unshared(seq_1)
-
-    def shortest_unshared(self, sequence_2):
-        """
-        >>> SuffixTree('CATGCTGGGCTGGCT$').shortest_unshared('CCAAGCTGCTAGAGG')
-        'AG'
-        """
-        shortest_unshared = sequence_2[:]
-        tl = len(sequence_2)
-        for i in xrange(1 + len(sequence_2) - 2):
-            shared = self.root.shared_suffix(sequence_2[i:])
-            if len(shared) + 1 < len(shortest_unshared) and len(shared) < tl - i:
-                shortest_unshared = shared + sequence_2[i + len(shared)]
-        return shortest_unshared
+        tree = cls(seq_2 + '$', 'B').append_named_sequence(seq_1 + '$', 'A')
+        condition = lambda n, c, p: 'B' not in c.seq_ids
+        out = lambda n, c, p: p + n.label + c.label[0]
+        unshared = tree.root.bfs_paths(condition, out)
+        shortest = next(unshared)
+        common = [shortest]
+        for possible in unshared:
+            if len(possible) < len(shortest) and not possible[-1] == '$':
+                shortest = possible
+                common = [possible]
+            elif len(possible) == len(shortest) and not possible[-1] == '$':
+                common.append(possible)
+        return min(common)

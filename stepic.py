@@ -21,9 +21,8 @@ class Stepic:
             data.readline()
             test_str = data.readline().strip()
         print 'Calculating'
-        unshared = read_mapping.SuffixTree.shortest_unshared_between(seq_2, seq_1)
+        unshared = read_mapping.SuffixTree.shortest_unshared_between(seq_1, seq_2)
         print unshared
-        print read_mapping.SuffixTree(seq_2).root.shared_suffix(unshared)
         if test:
             print test_str
 
