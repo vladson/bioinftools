@@ -275,6 +275,15 @@ class SuffixTree:
             self.root.append(sequence[i:], start=i, seq_id=id)
         return self
 
+    def to_suffix_array(self):
+        """
+        @return: suffix array
+        >>> SuffixTree('panamabananas$').to_suffix_array()
+        [13, 5, 3, 1, 7, 9, 11, 6, 4, 2, 8, 10, 0, 12]
+        """
+        out = lambda n, c, p: (p + n.label + c.label, c.starts[0])
+        return map(lambda (s, i): i, sorted(self.root.bfs_paths(out=out), key=lambda x: x[0]))
+
     def longest_repeat(self):
         return self.root.longest_repeat('')
 
@@ -301,14 +310,6 @@ class SuffixTree:
             elif len(possible) == len(shortest) and not possible[-1] == '$':
                 common.append(possible)
         return min(common)
-
-    def longest_shared_with(self, sequence_2):
-        longest_shared = ''
-        for i in xrange(len(sequence_2) - 1):
-            new_shared = self.root.shared_suffix(sequence_2[i:])
-            if len(new_shared) >= len(longest_shared):
-                longest_shared = new_shared
-        return longest_shared
 
     @classmethod
     def shortest_unshared_between(cls, seq_1, seq_2):

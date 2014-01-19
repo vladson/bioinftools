@@ -11,6 +11,29 @@ class Stepic:
     #
 
     @staticmethod
+    def suffix_array_from_tree(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        seq = data.readline().strip()
+        if test:
+            data.readline()
+            test_str = data.readline().strip()
+        data.close()
+        print 'Constructing...'
+        tree = read_mapping.SuffixTree(seq)
+        out = open('output/suffix_tree.txt', 'w')
+        print 'To array..'
+        suffix_array = str(tree.to_suffix_array())[1:-1]
+        print suffix_array
+        if test:
+            print suffix_array == test_str
+        else:
+            out.write(suffix_array)
+        out.close()
+
+
+    @staticmethod
     def shortest_unshared(path, test=False):
         data = open(path)
         if test:
