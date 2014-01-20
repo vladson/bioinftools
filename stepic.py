@@ -11,7 +11,7 @@ class Stepic:
     #
 
     @staticmethod
-    def suffix_array_from_tree(path, test=False):
+    def suffix_array_from_sequence(path, test=False):
         data = open(path)
         if test:
             data.readline()
@@ -20,16 +20,15 @@ class Stepic:
             data.readline()
             test_str = data.readline().strip()
         data.close()
-        print 'Constructing...'
-        tree = read_mapping.SuffixTree(seq)
+        print 'Constructing suffix tree from seq of length %i' % len(seq)
         out = open('output/suffix_tree.txt', 'w')
-        print 'To array..'
-        suffix_array = str(tree.to_suffix_array())[1:-1]
-        print suffix_array
+        suffix_array = read_mapping.SuffixArray.from_sequence(seq)
         if test:
-            print suffix_array == test_str
+            print 'Testing results'
+            print suffix_array.h_out() == test_str
         else:
-            out.write(suffix_array)
+            print 'Writing to file...'
+            out.write(suffix_array.h_out())
         out.close()
 
 

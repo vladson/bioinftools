@@ -330,3 +330,29 @@ class SuffixTree:
             elif len(possible) == len(shortest) and not possible[-1] == '$':
                 common.append(possible)
         return min(common)
+
+class SuffixArray:
+
+    def __init__(self, repr):
+        if isinstance(repr, list):
+            self.indices = repr
+        else:
+            self.indices = []
+
+
+    def __repr__(self):
+        return self.indices.__repr__()
+
+    @classmethod
+    def from_sequence(cls, sequence):
+        """
+        >>> SuffixArray.from_sequence('AACGATAGCGGTAGA$')
+        [15, 14, 0, 1, 12, 6, 4, 2, 8, 13, 3, 7, 9, 10, 11, 5]
+        """
+        proto_indices = list(range(len(sequence)))
+        def seq_sort(i, j):
+            return cmp(sequence[i:], sequence[j:])
+        return cls(sorted(proto_indices, cmp=seq_sort ))
+
+    def h_out(self):
+        return ', '.join(map(lambda x: str(x), self.indices))
