@@ -11,6 +11,13 @@ class Stepic:
     #
 
     @staticmethod
+    def burrows_wheeler_transform(path):
+        data = open(path)
+        seq = data.readline().strip()
+        data.close()
+        print read_mapping.BWT(seq)
+
+    @staticmethod
     def suffix_array_from_sequence(path, test=False):
         data = open(path)
         if test:

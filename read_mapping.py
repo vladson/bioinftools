@@ -356,3 +356,40 @@ class SuffixArray:
 
     def h_out(self):
         return ', '.join(map(lambda x: str(x), self.indices))
+
+class BWT:
+
+    """
+    >>> BWT('GCGTGCCTGGTCA$')
+    'ACTGGCT$TGCGGC'
+    >>> BWT(last_col='enwbpeoseu$llt')
+    'enwbpeoseu$llt'
+    """
+
+    def __init__(self, sequence=None, last_col=None):
+        def bwt_cmp(i, j):
+            return cmp(sequence[i:], sequence[j:])
+        if sequence:
+            self.tl = len(sequence)
+            indices = sorted(list(range(self.tl)), cmp=bwt_cmp)
+            self.last_col = ''.join([sequence[indx-1] for indx in indices])
+        elif last_col:
+            self.last_col = last_col
+        else:
+            raise StandardError('No valid sequence provided')
+        self.first_col = None
+
+    def first_column(self):
+        """
+        @return: str
+        >>> BWT(last_col='ard$rcaaaabb').first_column()
+        '$aaaaabbcdrr'
+        """
+        if not self.first_col:
+            self.first_col = ''.join(sorted(self.last_col))
+        return self.first_col
+
+    def __repr__(self):
+        return self.last_col.__repr__()
+
+
