@@ -11,6 +11,13 @@ class Stepic:
     #
 
     @staticmethod
+    def inverse_burrows_wheeler(path):
+        data = open(path)
+        seq = data.readline().strip()
+        data.close()
+        print read_mapping.BWT(last_col=seq).reconstruct()
+
+    @staticmethod
     def burrows_wheeler_transform(path):
         data = open(path)
         seq = data.readline().strip()

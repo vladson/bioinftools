@@ -374,6 +374,7 @@ class BWT:
             indices = sorted(list(range(self.tl)), cmp=bwt_cmp)
             self.last_col = ''.join([sequence[indx-1] for indx in indices])
         elif last_col:
+            self.tl = len(last_col)
             self.last_col = last_col
         else:
             raise StandardError('No valid sequence provided')
@@ -391,5 +392,34 @@ class BWT:
 
     def __repr__(self):
         return self.last_col.__repr__()
+
+    def reconstruct(self):
+        """
+        @return: str
+        >>> BWT('panamabananas$').reconstruct()
+        'panamabananas$'
+        >>> BWT(last_col='TTCCTAACG$A').reconstruct()
+        'TACATCACGT$'
+        """
+        self.first_column()
+        alfa_list = list(set(self.last_col))
+        first_alfa_index = dict(map(lambda x: (x, []), alfa_list))
+        last_alfa_index = dict(map(lambda x: (x, []), alfa_list))
+        for index, alfa in enumerate(self.first_col):
+            first_alfa_index[alfa].append(index)
+        for index, alfa in enumerate(self.last_col):
+            last_alfa_index[alfa].append(index)
+        previos_index = last_alfa_index['$'][0]
+        reconstruction = self.first_col[previos_index]
+        for i in xrange(1, self.tl):
+            last = reconstruction[-1]
+            next_index = first_alfa_index[last].index(previos_index)
+            previos_index = last_alfa_index[last][next_index]
+            reconstruction += self.first_col[previos_index]
+        return reconstruction
+
+
+
+
 
 
