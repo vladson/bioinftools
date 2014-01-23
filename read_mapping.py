@@ -379,6 +379,8 @@ class BWT:
         else:
             raise StandardError('No valid sequence provided')
         self.first_col = None
+        self.first_alfa_index = None
+        self.last_alfa_index = None
 
     def first_column(self):
         """
@@ -402,13 +404,8 @@ class BWT:
         'TACATCACGT$'
         """
         self.first_column()
-        alfa_list = list(set(self.last_col))
-        first_alfa_index = dict(map(lambda x: (x, []), alfa_list))
-        last_alfa_index = dict(map(lambda x: (x, []), alfa_list))
-        for index, alfa in enumerate(self.first_col):
-            first_alfa_index[alfa].append(index)
-        for index, alfa in enumerate(self.last_col):
-            last_alfa_index[alfa].append(index)
+        first_alfa_index, last_alfa_index = self.setup_mapping()
+
         previos_index = last_alfa_index['$'][0]
         reconstruction = self.first_col[previos_index]
         for i in xrange(1, self.tl):
@@ -417,6 +414,47 @@ class BWT:
             previos_index = last_alfa_index[last][next_index]
             reconstruction += self.first_col[previos_index]
         return reconstruction
+
+    def match_num(self, pattern):
+        """
+        @param pattern: str
+        @return: int
+        >>> b = BWT(last_col='TCCTCTATGAGATCCTATTCTATGAAACCTTCA$GACCAAAATTCTCCGGC')
+        >>> b.match_num('CCT')
+        2
+        >>> b.match_num('CAG')
+        0
+        >>> b.match_num('ATC')
+        1
+        """
+        self.setup_mapping()
+        pattern = list(pattern)
+        top, bottom = 0, self.tl
+        while top <= bottom:
+            if pattern:
+                current = pattern.pop()
+                occurencies = filter(lambda x: top <= x <= bottom, self.last_alfa_index[current])
+                if occurencies:
+                    top = self.first_alfa_index[current][self.last_alfa_index[current].index(occurencies[0])]
+                    bottom = self.first_alfa_index[current][self.last_alfa_index[current].index(occurencies[-1])]
+                else:
+                    return 0
+            else:
+                return bottom - top + 1
+
+
+    def setup_mapping(self):
+        self.first_column()
+        if not self.first_alfa_index:
+            alfa_list = list(set(self.last_col))
+            self.first_alfa_index = dict(map(lambda x: (x, []), alfa_list))
+            self.last_alfa_index = dict(map(lambda x: (x, []), alfa_list))
+            for index, alfa in enumerate(self.first_col):
+                self.first_alfa_index[alfa].append(index)
+            for index, alfa in enumerate(self.last_col):
+                self.last_alfa_index[alfa].append(index)
+        return self.first_alfa_index, self.last_alfa_index
+
 
 
 

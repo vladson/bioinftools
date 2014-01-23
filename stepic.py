@@ -11,6 +11,21 @@ class Stepic:
     #
 
     @staticmethod
+    def bwt_matching(path):
+        data = open(path)
+        sequence = data.readline().strip()
+        patterns = data.readline().strip().split(' ')
+        data.close()
+        print 'Setting up BWT'
+        bwt = read_mapping.BWT(last_col=sequence)
+        print 'Setting up index'
+        bwt.match_num('ACTG')
+        out = open('output/bwt_match.txt', 'w')
+        print 'Matching'
+        print >> out, ' '.join(map(lambda x: str(x), [bwt.match_num(pattern) for pattern in patterns]))
+        out.close()
+
+    @staticmethod
     def inverse_burrows_wheeler(path):
         data = open(path)
         seq = data.readline().strip()
