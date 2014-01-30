@@ -442,18 +442,72 @@ class BWT:
             else:
                 return bottom - top + 1
 
+    def better_matching(self, pattern):
+        """
+        >>> b = BWT(last_col='TCCTCTATGAGATCCTATTCTATGAAACCTTCA$GACCAAAATTCTCCGGC')
+        >>> b.better_matching('CCT')
+        2
+        >>> b = BWT(last_col='GGCGCCGC$TAGTCACACACGCCGTA')
+        >>> b.better_matching('ACC')
+        1
+        >>> b.better_matching('CCG')
+        2
+        >>> b.better_matching('CAG')
+        1
+        >>> b.better_matching('GAT')
+        0
+        """
+        first_occurencies, counts = self.setup_better_match()
+        pattern = list(pattern)
+        top, bottom = 0, self.tl
+        while top <= bottom:
+            if pattern:
+                current = pattern.pop()
+                if counts[bottom+1][current] - counts[top][current] > 0:
+                    top = first_occurencies[current] + counts[top][current]
+                    bottom = first_occurencies[current] + counts[bottom + 1][current] - 1
+                else:
+                    return 0
+            else:
+                return bottom - top + 1
+
 
     def setup_mapping(self):
         self.first_column()
         if not self.first_alfa_index:
-            alfa_list = list(set(self.last_col))
-            self.first_alfa_index = dict(map(lambda x: (x, []), alfa_list))
-            self.last_alfa_index = dict(map(lambda x: (x, []), alfa_list))
+            if not hasattr(self, 'alfa_list'):
+                self.alfa_list = list(set(self.last_col))
+            self.first_alfa_index = dict(map(lambda x: (x, []), self.alfa_list))
+            self.last_alfa_index = dict(map(lambda x: (x, []), self.alfa_list))
             for index, alfa in enumerate(self.first_col):
                 self.first_alfa_index[alfa].append(index)
             for index, alfa in enumerate(self.last_col):
                 self.last_alfa_index[alfa].append(index)
         return self.first_alfa_index, self.last_alfa_index
+
+    def setup_better_match(self):
+        """
+        >>> BWT('panamabananas$').setup_better_match()[0]
+        {'a': 1, 'b': 7, '$': 0, 'm': 8, 'n': 9, 'p': 12, 's': 13}
+        """
+        if not hasattr(self, 'first_occurencies'):
+            if not hasattr(self, 'alfa_list'):
+                self.alfa_list = list(set(self.last_col))
+            counts = [{i : 0 for i in self.alfa_list}]
+
+            for char in self.last_col:
+                current = counts[-1].copy()
+                current[char] += 1
+                counts.append(current)
+            counts.append(counts[-1].copy())
+            self.counts = counts
+            first_occurencies = {char: 0 for char in self.alfa_list}
+            current_offset = 0
+            for char in sorted(self.alfa_list):
+                first_occurencies[char] = current_offset
+                current_offset += counts[-1][char]
+            self.first_occurencies = first_occurencies
+        return self.first_occurencies, self.counts
 
 
 

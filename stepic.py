@@ -11,7 +11,10 @@ class Stepic:
     #
 
     @staticmethod
-    def bwt_matching(path):
+    def bwt_matching(path, matcher=read_mapping.BWT.better_matching):
+        """
+        >>> mathcers = [read_mapping.BWT.match_num, read_mapping.BWT.better_matching]
+        """
         data = open(path)
         sequence = data.readline().strip()
         patterns = data.readline().strip().split(' ')
@@ -19,10 +22,10 @@ class Stepic:
         print 'Setting up BWT'
         bwt = read_mapping.BWT(last_col=sequence)
         print 'Setting up index'
-        bwt.match_num('ACTG')
+        matcher(bwt, 'ACTG')
         out = open('output/bwt_match.txt', 'w')
         print 'Matching'
-        print >> out, ' '.join(map(lambda x: str(x), [bwt.match_num(pattern) for pattern in patterns]))
+        print >> out, ' '.join(map(lambda x: str(x), [matcher(bwt, pattern) for pattern in patterns]))
         out.close()
 
     @staticmethod
