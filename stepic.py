@@ -11,6 +11,26 @@ class Stepic:
     #
 
     @staticmethod
+    def bwt_patial_suffix_array(path, test=False):
+        data = open(path)
+        if test:
+            data.readline()
+        sequence = data.readline().strip()
+        k = int(data.readline().strip())
+        print 'Constructing for k-slice = %i' % k
+        bwt = read_mapping.BWT(sequence=sequence, sa_slice=k)
+        if test:
+            data.readline()
+            testum = map(lambda x: map(lambda i: int(i), x.strip().split(',')), data.readlines())
+            print testum
+        else:
+            out = open('output/bwt_partial_sa.txt', 'w')
+            for (key, value) in bwt.partial_suffix_array.iteritems():
+                out.write("%i,%i\n" % (key, value))
+            out.close()
+            print 'Items written'
+
+    @staticmethod
     def bwt_matching(path, matcher=read_mapping.BWT.better_matching):
         """
         >>> mathcers = [read_mapping.BWT.match_num, read_mapping.BWT.better_matching]

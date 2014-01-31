@@ -364,18 +364,23 @@ class BWT:
     'ACTGGCT$TGCGGC'
     >>> BWT(last_col='enwbpeoseu$llt')
     'enwbpeoseu$llt'
+    >>> BWT('panamabananas$').partial_suffix_array
+    {1: 5, 11: 10, 12: 0}
     """
 
-    def __init__(self, sequence=None, last_col=None):
+    def __init__(self, sequence=None, last_col=None, sa_slice=5):
         def bwt_cmp(i, j):
             return cmp(sequence[i:], sequence[j:])
         if sequence:
             self.tl = len(sequence)
             indices = sorted(list(range(self.tl)), cmp=bwt_cmp)
             self.last_col = ''.join([sequence[indx-1] for indx in indices])
+            if sa_slice:
+                self.partial_suffix_array = {ndx: vl for (ndx, vl) in enumerate(indices) if not vl % sa_slice}
         elif last_col:
             self.tl = len(last_col)
             self.last_col = last_col
+            self.partial_suffix_array = None
         else:
             raise StandardError('No valid sequence provided')
         self.first_col = None
