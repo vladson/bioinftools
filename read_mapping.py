@@ -462,15 +462,15 @@ class BWT:
         >>> b.better_matching('GAT')
         0
         """
-        first_occurencies, counts = self.setup_better_match()
+        first_occurencies, counts_at = self.setup_better_match(5)
         pattern = list(pattern)
         top, bottom = 0, self.tl
         while top <= bottom:
             if pattern:
                 current = pattern.pop()
-                if counts[bottom+1][current] - counts[top][current] > 0:
-                    top = first_occurencies[current] + counts[top][current]
-                    bottom = first_occurencies[current] + counts[bottom + 1][current] - 1
+                if counts_at(bottom+1)[current] - counts_at(top)[current] > 0:
+                    top = first_occurencies[current] + counts_at(top)[current]
+                    bottom = first_occurencies[current] + counts_at(bottom + 1)[current] - 1
                 else:
                     return 0
             else:
@@ -490,7 +490,7 @@ class BWT:
                 self.last_alfa_index[alfa].append(index)
         return self.first_alfa_index, self.last_alfa_index
 
-    def setup_better_match(self):
+    def setup_better_match(self, slice_len=1):
         """
         >>> BWT('panamabananas$').setup_better_match()[0]
         {'a': 1, 'b': 7, '$': 0, 'm': 8, 'n': 9, 'p': 12, 's': 13}
@@ -499,11 +499,11 @@ class BWT:
             if not hasattr(self, 'alfa_list'):
                 self.alfa_list = list(set(self.last_col))
             counts = [{i : 0 for i in self.alfa_list}]
-
-            for char in self.last_col:
-                current = counts[-1].copy()
+            current = {i : 0 for i in self.alfa_list}
+            for index, char in enumerate(self.last_col):
                 current[char] += 1
-                counts.append(current)
+                if not index % slice_len:
+                    counts.append(current.copy())
             counts.append(counts[-1].copy())
             self.counts = counts
             first_occurencies = {char: 0 for char in self.alfa_list}
@@ -512,7 +512,20 @@ class BWT:
                 first_occurencies[char] = current_offset
                 current_offset += counts[-1][char]
             self.first_occurencies = first_occurencies
-        return self.first_occurencies, self.counts
+
+            def counts_at(num):
+                start_slice_pos = num / slice_len
+                start = slice_len * start_slice_pos
+                end = min(self.tl, start + 1 + num % slice_len)
+                current = self.counts[start_slice_pos]
+                for i in xrange(start, end):
+                    current[self.last_col[i]] += 1
+                return current
+
+            self.counts_at = counts_at
+
+
+        return self.first_occurencies, self.counts_at
 
 
 
