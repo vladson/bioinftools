@@ -1,7 +1,7 @@
 import dna
 
-class Trie:
 
+class Trie:
     """
     >>> Trie('GGTA', 'CG', 'GGC').h_out()
     1 6 C
@@ -77,9 +77,7 @@ class Trie:
             print i, j, l
 
 
-
 class SuffixTrie:
-
     def __init__(self, string="$"):
         self.root = [{}]
         for index in xrange(len(string.strip()) - 1):
@@ -129,8 +127,8 @@ class SuffixTrie:
         for (i, j, l) in self.triplets():
             print i, j, l
 
-class SuffixEdge:
 
+class SuffixEdge:
     def __init__(self, text, children=None, starts=None, seq_ids=None):
         if children == None:
             children = []
@@ -174,7 +172,7 @@ class SuffixEdge:
             split_offset = i
             if not self.label[i] == text[i]:
                 break
-        # print split_offset, self.label, text, self.children
+            # print split_offset, self.label, text, self.children
         edge_1 = SuffixEdge(self.label[split_offset:], self.children[:], self.starts, self.seq_ids)
         edge_2 = SuffixEdge(text[split_offset:], starts=[start], seq_ids=seq_id)
         self.label = self.label[:split_offset]
@@ -185,7 +183,7 @@ class SuffixEdge:
     def longest_repeat(self, parent):
         if self.children:
             child_seq = [child.longest_repeat(parent + self.label) for child in self.children]
-            return max(child_seq, key=lambda x:len(x))
+            return max(child_seq, key=lambda x: len(x))
         else:
             return parent
 
@@ -235,12 +233,11 @@ class SuffixEdge:
                     if not sequence[i] == self.label[i]:
                         shared_part = sequence[:i]
                         break
-        # print 'returning %s' % shared_part
+            # print 'returning %s' % shared_part
         return shared_part
 
 
 class SuffixTree:
-
     """
     >>> SuffixTree('ATAAATG$')
     [A (0), T (1), G$ (6), $ (7)]
@@ -331,8 +328,8 @@ class SuffixTree:
                 common.append(possible)
         return min(common)
 
-class SuffixArray:
 
+class SuffixArray:
     def __init__(self, repr):
         if isinstance(repr, list):
             self.indices = repr
@@ -350,15 +347,17 @@ class SuffixArray:
         [15, 14, 0, 1, 12, 6, 4, 2, 8, 13, 3, 7, 9, 10, 11, 5]
         """
         proto_indices = list(range(len(sequence)))
+
         def seq_sort(i, j):
             return cmp(sequence[i:], sequence[j:])
-        return cls(sorted(proto_indices, cmp=seq_sort ))
+
+        return cls(sorted(proto_indices, cmp=seq_sort))
 
     def h_out(self):
         return ', '.join(map(lambda x: str(x), self.indices))
 
-class BWT:
 
+class BWT:
     """
     >>> BWT('GCGTGCCTGGTCA$')
     'ACTGGCT$TGCGGC'
@@ -371,10 +370,13 @@ class BWT:
     def __init__(self, sequence=None, last_col=None, sa_slice=5):
         def bwt_cmp(i, j):
             return cmp(sequence[i:], sequence[j:])
+
         if sequence:
+            if not sequence[-1] == '$':
+                sequence += '$'
             self.tl = len(sequence)
             indices = sorted(list(range(self.tl)), cmp=bwt_cmp)
-            self.last_col = ''.join([sequence[indx-1] for indx in indices])
+            self.last_col = ''.join([sequence[indx - 1] for indx in indices])
             if sa_slice:
                 self.partial_suffix_array = {ndx: vl for (ndx, vl) in enumerate(indices) if not vl % sa_slice}
         elif last_col:
@@ -458,7 +460,7 @@ class BWT:
         >>> b.better_matching('CCG')
         2
         >>> b.better_matching('CAG')
-        0
+        1
         >>> b.better_matching('GAT')
         0
         >>> b.better_matching('ACC', slice_len=5, offsets=False)
@@ -466,6 +468,14 @@ class BWT:
         >>> b = BWT('AATCGGGTTCAATCGGGGT')
         >>> list(b.better_matching('ATCG', True))
         [11, 1]
+        >>> list(b.better_matching('GGGT', True))
+        [15, 4]
+        >>> list(b.better_matching('AAT', True))
+        [10, 0]
+        >>> b.better_matching('CGGGT', False)
+        1
+        >>> b.better_matching('CCCCC')
+        0
         """
         first_occurencies, counts_at = self.setup_better_match(slice_len)
         pattern = list(pattern)
@@ -473,7 +483,8 @@ class BWT:
         while top <= bottom:
             if pattern:
                 current = pattern.pop()
-                if counts_at(bottom)[current] - counts_at(top)[current] > 0:
+                if counts_at(bottom+1)[current] - counts_at(top)[current] > 0:
+                #if current in self.last_col[top:bottom+1]:
                     top = first_occurencies[current] + counts_at(top)[current]
                     bottom = first_occurencies[current] + counts_at(bottom + 1)[current] - 1
                 else:
@@ -542,13 +553,14 @@ class BWT:
             if not hasattr(self, 'alfa_list'):
                 self.alfa_list = sorted(list(set(self.last_col)))
             counts = []
-            current = {i : 0 for i in self.alfa_list}
+            current = {i: 0 for i in self.alfa_list}
             for index, char in enumerate(self.last_col):
                 if not index % slice_len:
                     counts.append(current.copy())
                     current[char] += 1
                 else:
                     current[char] += 1
+            counts.append(current.copy())
             counts.append(current.copy())
             self.counts = counts
             first_occurencies = {char: 0 for char in self.alfa_list}

@@ -11,6 +11,61 @@ class Stepic:
     #
 
     @staticmethod
+    def bwt_multiple_match(path, test=False, retest=False):
+        data = open(path)
+        if test:
+            data.readline()
+        sequence = data.readline().strip()
+        seqs = []
+        tests = []
+        target = seqs
+        for line in data.readlines():
+            if line.strip() == 'Output:':
+                target = tests
+            else:
+                target.append(line.strip())
+        print 'Constructing BWT (sa_slice = 5)'
+        bwt = read_mapping.BWT(sequence, sa_slice=5)
+        print 'Preparing for matching (checkpoint interval = 5)'
+        bwt.setup_better_match(1)
+        match_offsets = []
+        print 'Matching %i sequencies...' % len(seqs)
+        pos, neg = [], []
+        try:
+            for i, read in enumerate(seqs):
+                matching = bwt.better_matching(read, True, 1)
+                if matching:
+                    pos.append(read)
+                    for offset in matching:
+                        match_offsets.append(offset)
+                else:
+                    neg.append(read)
+        except KeyboardInterrupt:
+            print 'Interrupted at %i read of length %i. Note the slow factor' % (i, len(read))
+            exit()
+        match_offsets = sorted(list(set(match_offsets)))
+        print 'Calculated: %i results. Reads present: %i, reads absent %i' % (len(match_offsets), len(pos), len(neg))
+        if test:
+            print 'Comparing...'
+            tests = sorted(list(set(map(lambda x: int(x), tests[0].strip().split()))))
+            print 'Tests: %i results' % len(tests)
+            print match_offsets == tests
+            if retest:
+                false_neg = 0
+                for read in neg:
+                    match = bwt.match_num(read)
+                    if match:
+                        print 'Read %s present %i times' % (read, match)
+                        false_neg += match
+                print 'Total: %i' % (len(match_offsets) + int(false_neg))
+        else:
+            print 'Writing...'
+            out = open('output/bwt_offset_matching.txt', 'w')
+            out.write(' '.join(map(lambda x: str(x), match_offsets)))
+            out.close()
+
+
+    @staticmethod
     def bwt_patial_suffix_array(path, test=False):
         data = open(path)
         if test:
