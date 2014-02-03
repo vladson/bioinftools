@@ -447,7 +447,7 @@ class BWT:
             else:
                 return bottom - top + 1
 
-    def better_matching(self, pattern):
+    def better_matching(self, pattern, offsets=False, slice_len=5):
         """
         >>> b = BWT(last_col='TCCTCTATGAGATCCTATTCTATGAAACCTTCA$GACCAAAATTCTCCGGC')
         >>> b.better_matching('CCT')
@@ -458,24 +458,54 @@ class BWT:
         >>> b.better_matching('CCG')
         2
         >>> b.better_matching('CAG')
-        1
+        0
         >>> b.better_matching('GAT')
         0
+        >>> b.better_matching('ACC', slice_len=5, offsets=False)
+        1
+        >>> b = BWT('AATCGGGTTCAATCGGGGT')
+        >>> list(b.better_matching('ATCG', True))
+        [11, 1]
         """
-        first_occurencies, counts_at = self.setup_better_match(5)
+        first_occurencies, counts_at = self.setup_better_match(slice_len)
         pattern = list(pattern)
         top, bottom = 0, self.tl
         while top <= bottom:
             if pattern:
                 current = pattern.pop()
-                if counts_at(bottom+1)[current] - counts_at(top)[current] > 0:
+                if counts_at(bottom)[current] - counts_at(top)[current] > 0:
                     top = first_occurencies[current] + counts_at(top)[current]
                     bottom = first_occurencies[current] + counts_at(bottom + 1)[current] - 1
                 else:
-                    return 0
+                    if offsets:
+                        return []
+                    else:
+                        return 0
             else:
-                return bottom - top + 1
+                if offsets:
+                    return self.offsets(top, bottom)
+                else:
+                    return bottom - top + 1
 
+
+    def offsets(self, top, bottom):
+        """
+        >>> b = BWT('panamabananas$')
+        >>> s = b.setup_better_match(5)
+        >>> list(b.offsets(5,5))
+        [9]
+        >>> list(b.offsets(3,5))
+        [1, 7, 9]
+        """
+        if not self.partial_suffix_array:
+            return
+        for i in xrange(top, bottom + 1):
+            addition = 0
+            curr = i
+            while not self.partial_suffix_array.has_key(curr):
+                curr = self.step_back(curr)
+                addition += 1
+            yield self.partial_suffix_array[curr] + addition
 
     def setup_mapping(self):
         self.first_column()
@@ -494,17 +524,32 @@ class BWT:
         """
         >>> BWT('panamabananas$').setup_better_match()[0]
         {'a': 1, 'b': 7, '$': 0, 'm': 8, 'n': 9, 'p': 12, 's': 13}
+        >>> b = BWT('panamabananas$')
+        >>> first_o,counts = b.setup_better_match(5)
+        >>> counts(0)
+        {'a': 0, 'p': 0, 's': 0, 'b': 0, '$': 0, 'm': 0, 'n': 0}
+        >>> counts(13)
+        {'a': 5, 'p': 1, 's': 1, 'b': 1, '$': 1, 'm': 1, 'n': 3}
+        >>> counts(14)
+        {'a': 6, 'p': 1, 's': 1, 'b': 1, '$': 1, 'm': 1, 'n': 3}
+        >>> first_o['$']
+        0
+        >>> first_o['s']
+        13
         """
         if not hasattr(self, 'first_occurencies'):
+            self.slice_len = slice_len
             if not hasattr(self, 'alfa_list'):
-                self.alfa_list = list(set(self.last_col))
-            counts = [{i : 0 for i in self.alfa_list}]
+                self.alfa_list = sorted(list(set(self.last_col)))
+            counts = []
             current = {i : 0 for i in self.alfa_list}
             for index, char in enumerate(self.last_col):
-                current[char] += 1
                 if not index % slice_len:
                     counts.append(current.copy())
-            counts.append(counts[-1].copy())
+                    current[char] += 1
+                else:
+                    current[char] += 1
+            counts.append(current.copy())
             self.counts = counts
             first_occurencies = {char: 0 for char in self.alfa_list}
             current_offset = 0
@@ -516,17 +561,27 @@ class BWT:
             def counts_at(num):
                 start_slice_pos = num / slice_len
                 start = slice_len * start_slice_pos
-                end = min(self.tl, start + 1 + num % slice_len)
-                current = self.counts[start_slice_pos]
+                end = min(self.tl, start + num % slice_len)
+                current_counts = counts[start_slice_pos].copy()
                 for i in xrange(start, end):
-                    current[self.last_col[i]] += 1
-                return current
+                    current_counts[self.last_col[i]] += 1
+                return current_counts
 
             self.counts_at = counts_at
 
-
+        if slice_len != self.slice_len:
+            print 'WARNING: better match set up with slice_len = %i' % self.slice_len
         return self.first_occurencies, self.counts_at
 
+    def step_back(self, curr):
+        """
+        >>> b = BWT('panamabananas$')
+        >>> s = b.setup_better_match(5)
+        >>> b.step_back(4)
+        7
+        """
+        char = self.last_col[curr]
+        return self.first_occurencies[char] + self.counts_at(curr)[char]
 
 
 
