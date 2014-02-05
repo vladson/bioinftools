@@ -498,6 +498,28 @@ class BWT:
                 else:
                     return bottom - top + 1
 
+    def match(self, pattern, d=1, conserved_part=1, slice_len=5):
+        """
+        >>> b = BWT('ACATGCTACTTT')
+        >>> list(b.match('ATT'))
+        [6, 2]
+        """
+        first_occurencies, counts_at = self.setup_better_match(slice_len)
+        pattern = list(pattern)
+        top, bottom = 0, self.tl
+        for i in range(conserved_part):
+            if pattern:
+                current = pattern.pop()
+                if counts_at(bottom+1)[current] - counts_at(top)[current] > 0:
+                #if current in self.last_col[top:bottom+1]:
+                    top = first_occurencies[current] + counts_at(top)[current]
+                    bottom = first_occurencies[current] + counts_at(bottom + 1)[current] - 1
+                else:
+                    return []
+            else:
+                return self.offsets(top, bottom)
+        # TODO iterating with fucking off stupid parts
+
 
     def offsets(self, top, bottom):
         """
