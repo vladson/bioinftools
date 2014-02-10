@@ -11,6 +11,33 @@ class Stepic:
     #
 
     @staticmethod
+    def bwt_match_mismatch_tolerant(path, test=False, conserved_length=0):
+        data = open(path)
+        if test:
+            data.readline()
+        sequence = data.readline().strip()
+        reads = data.readline().strip().split(' ')
+        d = int(data.readline().strip())
+        if test:
+            data.readline()
+            offsets = map(lambda x: int(x), data.readline().strip().split(' '))
+        data.close()
+        print 'Setting BWT up with sequence of length: %i' % len(sequence)
+        bwt = read_mapping.BWT(sequence, sa_slice=1)
+        print 'Preparing for matching'
+        bwt.setup_better_match(5)
+        print 'Matching %i reads with %i mismatches and conserved tail length %i' % (len(reads), d, conserved_length)
+        matches = [m for read in reads for m in bwt.match(read, d=d, conserved_part=conserved_length)]
+        if test:
+            print 'Testing'
+            print sorted(matches) == offsets
+            print set(offsets) - set(matches)
+        else:
+            out = open('./output/bwt_mismatch.txt', 'w')
+            out.write(' '.join(map(lambda x: str(x), sorted(matches))))
+            out.close()
+
+    @staticmethod
     def bwt_multiple_match(path, test=False, retest=False):
         data = open(path)
         if test:
@@ -27,13 +54,13 @@ class Stepic:
         print 'Constructing BWT (sa_slice = 5)'
         bwt = read_mapping.BWT(sequence, sa_slice=5)
         print 'Preparing for matching (checkpoint interval = 5)'
-        bwt.setup_better_match(1)
+        bwt.setup_better_match(5)
         match_offsets = []
         print 'Matching %i sequencies...' % len(seqs)
         pos, neg = [], []
         try:
             for i, read in enumerate(seqs):
-                matching = bwt.better_matching(read, True, 1)
+                matching = bwt.match(read)
                 if matching:
                     pos.append(read)
                     for offset in matching:

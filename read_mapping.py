@@ -531,19 +531,18 @@ class BWT:
             dellist = []
             current = pattern.pop()
             for ndx, candidate in enumerate(candidates):
-                if self.last_col[candidate['offset']] != current:
+                letter = self.last_col[candidate['offset']]
+                if letter != current:
                     candidate['errors'] += 1
-                    candidate['letter'] = self.last_col[candidate['offset']]
-                    if candidate['errors'] > d or candidate['letter'] == '$':
+                    if candidate['errors'] > d or (letter == '$' and len(pattern)):
                         dellist.append(ndx)
                         continue
-                else:
-                    candidate['letter'] = current
-                candidate['offset'] = first_occurencies[candidate['letter']] + counts_at(candidate['offset'])[candidate['letter']]
-            candidates = [c for (i,c) in enumerate(candidates) if i not in dellist ]
+                candidate['offset'] = first_occurencies[letter] + counts_at(candidate['offset'])[letter]
+            candidates = [c for (i,c) in enumerate(candidates) if i not in dellist]
         return self.offsets(starts=[c['offset'] for c in candidates])
 
-
+    def d_mismatch_match(self, pattern, d):
+        pass
 
     def offsets(self, top=None, bottom=None, starts=None):
         """
@@ -562,7 +561,7 @@ class BWT:
             if not bottom:
                 bottom = top
             starts = xrange(top, bottom + 1)
-        elif not starts:
+        elif not isinstance(starts, list):
             raise 'No starts provided'
         for i in starts:
             addition = 0
@@ -585,7 +584,7 @@ class BWT:
                 self.last_alfa_index[alfa].append(index)
         return self.first_alfa_index, self.last_alfa_index
 
-    def setup_better_match(self, slice_len=1):
+    def setup_better_match(self, slice_len=5):
         """
         >>> BWT('panamabananas$').setup_better_match()[0]
         {'a': 1, 'b': 7, '$': 0, 'm': 8, 'n': 9, 'p': 12, 's': 13}
