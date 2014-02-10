@@ -498,21 +498,23 @@ class BWT:
                 else:
                     return bottom - top + 1
 
-    def match(self, pattern, d=1, conserved_part=0, slice_len=5):
+    def match(self, pattern, d=0, conserved_part=0, slice_len=5):
         """
         >>> b = BWT('ACATGCTACTTT')
-        >>> list(b.match('ATT'))
+        >>> list(b.match('ATT', d=1))
         [9, 2, 8, 7]
-        >>> list(b.match('GCC'))
+        >>> list(b.match('GCC', d=1))
         [4]
         >>> list(b.match('GCTA'))
         [4]
-        >>> list(b.match('TATT'))
+        >>> list(b.match('TATT', d=1))
         [6]
         """
         first_occurencies, counts_at = self.setup_better_match(slice_len)
         pattern = list(pattern)
         top, bottom = 0, self.tl
+        if d == 0:
+            conserved_part = len(pattern)
         for i in range(conserved_part):
             if pattern:
                 current = pattern.pop()
