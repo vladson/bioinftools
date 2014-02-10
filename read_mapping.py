@@ -498,11 +498,17 @@ class BWT:
                 else:
                     return bottom - top + 1
 
-    def match(self, pattern, d=1, conserved_part=1, slice_len=5):
+    def match(self, pattern, d=1, conserved_part=0, slice_len=5):
         """
         >>> b = BWT('ACATGCTACTTT')
         >>> list(b.match('ATT'))
-        [6, 2]
+        [9, 2, 8, 7]
+        >>> list(b.match('GCC'))
+        [4]
+        >>> list(b.match('GCTA'))
+        [4]
+        >>> list(b.match('TATT'))
+        [6]
         """
         first_occurencies, counts_at = self.setup_better_match(slice_len)
         pattern = list(pattern)
@@ -518,10 +524,26 @@ class BWT:
                     return []
             else:
                 return self.offsets(top, bottom)
-        # TODO iterating with fucking off stupid parts
+        candidates = [{ 'offset': i, 'errors': 0 } for i in xrange(top, min(bottom+1, self.tl-1))]
+        while candidates and pattern:
+            dellist = []
+            current = pattern.pop()
+            for ndx, candidate in enumerate(candidates):
+                if self.last_col[candidate['offset']] != current:
+                    candidate['errors'] += 1
+                    candidate['letter'] = self.last_col[candidate['offset']]
+                    if candidate['errors'] > d or candidate['letter'] == '$':
+                        dellist.append(ndx)
+                        continue
+                else:
+                    candidate['letter'] = current
+                candidate['offset'] = first_occurencies[candidate['letter']] + counts_at(candidate['offset'])[candidate['letter']]
+            candidates = [c for (i,c) in enumerate(candidates) if i not in dellist ]
+        return self.offsets(starts=[c['offset'] for c in candidates])
 
 
-    def offsets(self, top, bottom):
+
+    def offsets(self, top=None, bottom=None, starts=None):
         """
         >>> b = BWT('panamabananas$')
         >>> s = b.setup_better_match(5)
@@ -529,10 +551,18 @@ class BWT:
         [9]
         >>> list(b.offsets(3,5))
         [1, 7, 9]
+        >>> list(b.offsets(starts=[3,4,5]))
+        [1, 7, 9]
         """
         if not self.partial_suffix_array:
             return
-        for i in xrange(top, bottom + 1):
+        if top:
+            if not bottom:
+                bottom = top
+            starts = xrange(top, bottom + 1)
+        elif not starts:
+            raise 'No starts provided'
+        for i in starts:
             addition = 0
             curr = i
             while not self.partial_suffix_array.has_key(curr):
